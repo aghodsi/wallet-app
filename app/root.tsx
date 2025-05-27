@@ -11,6 +11,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { fetchPortfolios } from "./db/fetcher";
 import SidebarLayout from "./components/_sidebar_layout";
+import { PortfolioContext } from "./stateManagement/portfolioContext";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -58,12 +59,13 @@ export default function App({
   loaderData,
 }: Route.ComponentProps) {
   const portfolios = loaderData.portFoliosMapped;
-  console.log("Portfolios:", portfolios);
   return (
     <>
-      <SidebarLayout portfolios={portfolios}>
-        <Outlet />;
-      </SidebarLayout>
+      <PortfolioContext value={portfolios}>
+        <SidebarLayout>
+          <Outlet />;
+        </SidebarLayout>
+      </PortfolioContext>
     </>
   )
 

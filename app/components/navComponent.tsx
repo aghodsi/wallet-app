@@ -23,22 +23,23 @@ import {
   useSidebar,
 } from "~/components/ui/sidebar"
 
-export function NavProjects({
-  projects,
-}: {
-  projects: {
+type NavComponentProps = {
+  items: {
     name: string
     url: string
     icon: LucideIcon
-  }[]
-}) {
+  }[],
+  title: string
+}
+
+export function NavComponent(props: NavComponentProps) {
   const { isMobile } = useSidebar()
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>{props.title}</SidebarGroupLabel>
       <SidebarMenu>
-        {projects.map((item) => (
+        {props.items.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
               <a href={item.url}>
@@ -75,12 +76,12 @@ export function NavProjects({
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
-        <SidebarMenuItem>
+        {/* <SidebarMenuItem>
           <SidebarMenuButton className="text-sidebar-foreground/70">
             <MoreHorizontal className="text-sidebar-foreground/70" />
             <span>More</span>
           </SidebarMenuButton>
-        </SidebarMenuItem>
+        </SidebarMenuItem> */}
       </SidebarMenu>
     </SidebarGroup>
   )

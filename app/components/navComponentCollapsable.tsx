@@ -18,9 +18,8 @@ import {
   SidebarMenuSubItem,
 } from "~/components/ui/sidebar"
 
-export function NavMain({
-  items,
-}: {
+
+type NavComponentCollapsableProps = {
   items: {
     title: string
     url: string
@@ -30,13 +29,17 @@ export function NavMain({
       title: string
       url: string
     }[]
-  }[]
-}) {
+  }[],
+  title: string
+
+}
+
+export function NavComponentCollapsable(props: NavComponentCollapsableProps) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>{props.title}</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
+        {props.items.map((item) => (
           <Collapsible
             key={item.title}
             asChild
