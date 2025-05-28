@@ -22,18 +22,18 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar"
+import type { MenuItem } from "~/datatypes/menuItem"
+import { usePortfolioDispatch, userPortfolios } from "~/stateManagement/portfolioContext"
 
 type NavComponentProps = {
-  items: {
-    name: string
-    url: string
-    icon: LucideIcon
-  }[],
+  items: MenuItem[],
   title: string
 }
 
 export function NavComponent(props: NavComponentProps) {
   const { isMobile } = useSidebar()
+  const portfolios = userPortfolios()
+  const portfolioDispatchContext = usePortfolioDispatch
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -42,12 +42,14 @@ export function NavComponent(props: NavComponentProps) {
         {props.items.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
-              <a href={item.url}>
-                <item.icon />
+              <a href={item.url}
+                className={item.needsPortfolio && portfolios.length==0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
+                tabIndex={item.needsPortfolio && portfolios.length==0  ? -1 : undefined}>
+                {item.icon && <item.icon />}
                 <span>{item.name}</span>
               </a>
             </SidebarMenuButton>
-            <DropdownMenu>
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuAction showOnHover>
                   <MoreHorizontal />
@@ -73,7 +75,7 @@ export function NavComponent(props: NavComponentProps) {
                   <span>Delete Project</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu> */}
           </SidebarMenuItem>
         ))}
         {/* <SidebarMenuItem>

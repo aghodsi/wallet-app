@@ -17,6 +17,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "~/components/ui/sidebar"
+import type { MenuItem } from "~/datatypes/menuItem"
+import { userPortfolios } from "~/stateManagement/portfolioContext"
 
 
 type NavComponentCollapsableProps = {
@@ -25,16 +27,14 @@ type NavComponentCollapsableProps = {
     url: string
     icon?: LucideIcon
     isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
+    items?: MenuItem[]
   }[],
   title: string
 
 }
 
 export function NavComponentCollapsable(props: NavComponentCollapsableProps) {
+  const portfolios = userPortfolios();
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{props.title}</SidebarGroupLabel>
@@ -57,10 +57,11 @@ export function NavComponentCollapsable(props: NavComponentCollapsableProps) {
               <CollapsibleContent>
                 <SidebarMenuSub>
                   {item.items?.map((subItem) => (
-                    <SidebarMenuSubItem key={subItem.title}>
+                    <SidebarMenuSubItem key={subItem.name}>
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
-                          <span>{subItem.title}</span>
+                        <a href={subItem.url} className={subItem.needsPortfolio && portfolios.length == 0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
+                          tabIndex={subItem.needsPortfolio && portfolios.length == 0 ? -1 : undefined}>
+                          <span>{subItem.name}</span>
                         </a>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

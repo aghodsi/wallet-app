@@ -11,7 +11,8 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { fetchPortfolios } from "./db/fetcher";
 import SidebarLayout from "./components/_sidebar_layout";
-import { PortfolioContext } from "./stateManagement/portfolioContext";
+import { PortfolioProvider } from "./stateManagement/portfolioContext";
+import type { Portfolio } from "./datatypes/portfolio";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -51,7 +52,22 @@ export async function loader({ params }: Route.LoaderArgs) {
     name: pf.name,
     currency: pf.currency,
     symbol: pf.symbol ?? undefined,
-  }));
+    first_category: pf.first_category,
+    second_category: pf.second_category,
+    selected: false
+  } as Portfolio));
+  if (portFoliosMapped && portFoliosMapped.length > 0) {
+    portFoliosMapped.push({
+      id: 0,
+      name: "All",
+      currency: "USD",
+      symbol: "GalleryVerticalEnd",
+      //TODO: Add categories from db
+      first_category: 0,
+      second_category: 0,
+      selected: true,
+    });
+  }
   return { portFoliosMapped };
 }
 
@@ -61,11 +77,11 @@ export default function App({
   const portfolios = loaderData.portFoliosMapped;
   return (
     <>
-      <PortfolioContext value={portfolios}>
+      <PortfolioProvider initialPortfolios={portfolios}>
         <SidebarLayout>
-          <Outlet />;
+          <Outlet />
         </SidebarLayout>
-      </PortfolioContext>
+      </PortfolioProvider>
     </>
   )
 

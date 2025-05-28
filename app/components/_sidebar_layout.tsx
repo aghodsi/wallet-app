@@ -1,33 +1,15 @@
-import type { P } from "node_modules/react-router/dist/development/route-data-WyrduLgj.mjs";
-import { useContext } from "react";
 import { AppSidebar } from "~/components/appSidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "~/components/ui/breadcrumb"
-import { Separator } from "~/components/ui/separator"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "~/components/ui/sidebar"
-import { PortfolioContext } from "~/stateManagement/portfolioContext";
-import type { Portfolio } from "~/datatypes/portfolio";
 
-type SidebarLayoutProps = {
-  children: React.ReactNode;
-  portfolios?: Portfolio[];
-};
 
-export default function SidebarLayout(sidebarProps: SidebarLayoutProps) {
-  const portfolios = useContext(PortfolioContext)
+export default function SidebarLayout({children} : {children: React.ReactNode}) {
   return (
     <SidebarProvider>
-      <AppSidebar portfolios={portfolios} />
+      <AppSidebar/>
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
@@ -58,7 +40,7 @@ export default function SidebarLayout(sidebarProps: SidebarLayoutProps) {
             <div className="bg-muted/50 aspect-video rounded-xl" />
           </div>
           <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" /> */}
-          {sidebarProps.children}
+          {children}
         </div>
       </SidebarInset>
     </SidebarProvider>

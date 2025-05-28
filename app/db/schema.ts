@@ -6,6 +6,14 @@ export const portfolioTable = mysqlTable('portfolio', {
     name: varchar({ length: 255 }).notNull(),
     currency: varchar({ length: 50 }).notNull(),
     symbol: varchar({ length: 255 }),
+    first_category: int('first_category').references(() => categoryTable.id),
+    second_category: int('second_category').references(() => categoryTable.id),
+});
+
+export const categoryTable = mysqlTable('category', {
+    id: int().autoincrement().primaryKey(),
+    name: varchar({ length: 255 }).notNull(),
+    description: varchar({ length: 500 }),
 });
 
 export const transactionTable = mysqlTable('transaction', {

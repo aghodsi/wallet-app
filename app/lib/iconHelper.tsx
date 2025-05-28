@@ -1,4 +1,5 @@
-import { Baby, GalleryVerticalEnd, GraduationCap, LifeBuoy, PiggyBank, RockingChair, ShoppingCart, Wallet } from "lucide-react";
+import { Baby, GalleryVerticalEnd, GraduationCap, LifeBuoy, PiggyBank, RockingChair, ShoppingCart, Wallet, type LucideIcon } from "lucide-react";
+import type { L } from "node_modules/react-router/dist/development/route-data-WyrduLgj.mjs";
 
 
 

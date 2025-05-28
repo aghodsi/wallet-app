@@ -16,17 +16,17 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar"
+import type { Portfolio } from "~/datatypes/portfolio"
+import { convertTextToIcon } from "~/lib/iconHelper"
+import { usePortfolioDispatch } from "~/stateManagement/portfolioContext"
 
 export function PortfolioSwitcher({
   portfolios,
 }: {
-  portfolios: {
-    name: string
-    logo: React.ElementType
-    plan: string
-  }[]
+  portfolios: Portfolio[]
 }) {
   const { isMobile } = useSidebar()
+  const portfolioDispatchContext = usePortfolioDispatch();
   const [activePortfolio, setActivePortfolio] = React.useState(portfolios[0])
 
   if (!activePortfolio) {
@@ -43,11 +43,11 @@ export function PortfolioSwitcher({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <activePortfolio.logo className="size-4" />
+                {convertTextToIcon(activePortfolio.symbol, "size-4")}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activePortfolio.name}</span>
-                <span className="truncate text-xs">{activePortfolio.plan}</span>
+                <span className="truncate font-medium">{activePortfolio.name} ({activePortfolio.currency})</span>
+                <span className="truncate text-xs">{activePortfolio.first_category | activePortfolio.second_category}</span>
               </div>
               <ChevronsUpDown className="ml-auto" />
             </SidebarMenuButton>
@@ -68,7 +68,7 @@ export function PortfolioSwitcher({
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
-                  <portfolio.logo className="size-3.5 shrink-0" />
+                  {convertTextToIcon(portfolio.symbol, "size-3.5 shrink-0")}
                 </div>
                 {portfolio.name}
                 <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
