@@ -10,6 +10,11 @@ export default defineConfig({
   schema: './app/db/schema.ts',
   dialect: 'mysql',
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
-  },
+    host: process.env.DATABASE_HOST!,
+    port: process.env.DATABASE_PORT ? parseInt(process.env.DATABASE_PORT) : 3306,
+    user: process.env.DATABASE_USER!,
+    password: process.env.DATABASE_PASSWORD!,
+    database: process.env.DATABASE_NAME!,
+    ssl: {}
+  }
 });

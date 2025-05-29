@@ -9,10 +9,10 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import { fetchPortfolios } from "./db/fetcher";
+import { fetchCurrenciesByIds, fetchDefaultCurrency, fetchInstitutionByIds, fetchPortfolios } from "./db/fetcher";
 import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
-import type { Portfolio } from "./datatypes/portfolio";
+import type { PortfolioType } from "./datatypes/portfolio";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -47,24 +47,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export async function loader({ params }: Route.LoaderArgs) {
   const pf_from_db = await fetchPortfolios();
+  const currencyIds = pf_from_db.map((pf) => pf.currency);
+  const institutionIds = pf_from_db.map((pf) => pf.institutionId);
+  const currencies = await fetchCurrenciesByIds(currencyIds);
+  const institutions = await fetchInstitutionByIds(institutionIds);
+  
   const portFoliosMapped = pf_from_db.map((pf) => ({
     id: pf.id,
     name: pf.name,
-    currency: pf.currency,
+    currency: currencies.find((c) => c.id === pf.currency) ?? { id: 1, code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 1, lastUpdated: new Date().toISOString() },
     symbol: pf.symbol ?? undefined,
-    first_category: pf.first_category,
-    second_category: pf.second_category,
+    type: pf.type ?? "Investment",
+    institution: institutions.find((i) => i.id === pf.institutionId) ?? { id: 1, name: "Default Institution", isDefault: true, website: "", apiKey: "", apiSecret: "", apiUrl: "", lastUpdated: new Date().toISOString(), isNew: false },
     selected: false
-  } as Portfolio));
-  if (portFoliosMapped && portFoliosMapped.length > 0) {
+  } as PortfolioType));
+
+  if (portFoliosMapped && portFoliosMapped.length > 1) {
+    const defaultCurrencyRow = await fetchDefaultCurrency(); 
+    const defaultCurrency = defaultCurrencyRow.map((c) => ({ id: c.id, code: c.code, name: c.name, symbol: c.symbol, exchangeRate: c.exchangeRate ?? 1, lastUpdated: c.lastUpdated, isDefault: c.isDefault === 1, isNew: false }));
+
     portFoliosMapped.push({
-      id: 0,
+      id: -1, // Use a negative ID to indicate this is a special "All" portfolio
       name: "All",
-      currency: "USD",
+      currency: defaultCurrency[0] ?? { id: 1, code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 1, lastUpdated: new Date().toISOString() },
       symbol: "GalleryVerticalEnd",
-      //TODO: Add categories from db
-      first_category: 0,
-      second_category: 0,
+      type: "Investment",
+      institution: { id: 1, name: "All Institutions", isDefault: true, website: "", apiKey: "", apiSecret: "", apiUrl: "", lastUpdated: new Date().toISOString(), isNew: false },
       selected: true,
     });
   }

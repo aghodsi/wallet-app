@@ -16,14 +16,14 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar"
-import type { Portfolio } from "~/datatypes/portfolio"
+import type { PortfolioType } from "~/datatypes/portfolio"
 import { convertTextToIcon } from "~/lib/iconHelper"
 import { usePortfolioDispatch } from "~/stateManagement/portfolioContext"
 
 export function PortfolioSwitcher({
   portfolios,
 }: {
-  portfolios: Portfolio[]
+  portfolios: PortfolioType[]
 }) {
   const { isMobile } = useSidebar()
   const portfolioDispatchContext = usePortfolioDispatch();
@@ -46,8 +46,8 @@ export function PortfolioSwitcher({
                 {convertTextToIcon(activePortfolio.symbol, "size-4")}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activePortfolio.name} ({activePortfolio.currency})</span>
-                <span className="truncate text-xs">{activePortfolio.first_category | activePortfolio.second_category}</span>
+                <span className="truncate font-medium">{activePortfolio.name} ({activePortfolio.currency.symbol})</span>
+                <span className="truncate text-xs">{activePortfolio.tags}</span>
               </div>
               <ChevronsUpDown className="ml-auto" />
             </SidebarMenuButton>

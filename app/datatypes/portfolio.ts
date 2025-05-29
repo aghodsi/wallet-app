@@ -1,9 +1,13 @@
-export type Portfolio = {
+import type { CurrencyType } from "./currency";
+import type { InstitutionType } from "./institution";
+
+export type PortfolioType = {
   id: number;
   name: string;
-  currency: string;
+  currency: CurrencyType;
   symbol: string;
-  first_category: number;
-  second_category: number;
+  type: "Current" | "Saving" | "Investment";
+  institution: InstitutionType;
+  tags?: string;
   selected: boolean;
 };
