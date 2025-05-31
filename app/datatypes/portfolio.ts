@@ -8,6 +8,7 @@ export type PortfolioType = {
   symbol: string;
   type: "Current" | "Saving" | "Investment";
   institution: InstitutionType;
+  cashBalance: number;
   tags?: string;
   selected: boolean;
 };

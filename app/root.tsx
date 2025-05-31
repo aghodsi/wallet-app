@@ -9,7 +9,7 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import { fetchCurrenciesByIds, fetchDefaultCurrency, fetchInstitutionByIds, fetchPortfolios } from "./db/fetcher";
+import { fetchCurrenciesByIds, fetchDefaultCurrency, fetchInstitutionByIds, fetchPortfolios } from "./db/function";
 import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import type { PortfolioType } from "./datatypes/portfolio";

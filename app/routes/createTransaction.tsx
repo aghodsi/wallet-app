@@ -1,5 +1,5 @@
 
-import { createPortfolio } from "~/db/function";
+import {c } from "~/db/function";
 import type { Route } from "./+types/createPortfolio";
 
 export async function action({ request }: Route.ActionArgs) {

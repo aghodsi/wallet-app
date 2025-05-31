@@ -10,6 +10,7 @@ import mysql from "mysql2/promise";
 import { eq, inArray } from "drizzle-orm";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { PortfolioType } from "~/datatypes/portfolio";
+import type { TransactionType } from "~/datatypes/transaction";
 
 const connection = await mysql.createConnection({
   host: process.env.DATABASE_HOST!,
@@ -126,4 +127,45 @@ export async function createInstitution(institution: InstitutionType) {
       lastUpdated: new Date().toISOString(),
     })
     .$returningId();
+}
+
+
+
+export async function createTransaction(transaction: TransactionType) {
+  if((transaction.type === "Buy" || transaction.type === "Sell" ||  transaction.type === "Dividend") && transaction.targetPortfolioId && transaction.targetPortfolioId !== transaction.portfolioId) {
+    // Handle transfer between portfolios
+    db.insert(transactionTable)
+      .values({
+        portfolioId: transaction.targetPortfolioId,
+        date: new Date().toISOString(),
+        type: transaction.type === "Buy" ? "Withdraw" : "Deposit", // Adjust type for transfer
+        asset: "Cash",
+        quantity: transaction.quantity,
+        price: transaction.price,
+        commision: transaction.commision,
+        tax: transaction.tax,
+        notes: `Tansfer to other portfolio for purchase of asset ${transaction.asset}`,
+        isHouskeeping: 1, // Mark as housekeeping transaction
+      })
+      .$returningId();
+
+  }
+  return db
+    .insert(transactionTable)
+    .values({
+      portfolioId: transaction.portfolioId,
+      date: transaction.date,
+      type: transaction.type,
+      asset: transaction.asset,
+      quantity: transaction.quantity,
+      price: transaction.price,
+      commision: transaction.commision,
+      recurrence: transaction.recurrence || "",
+      tax: transaction.tax,
+      tags: transaction.tags || "",
+      notes: transaction.notes || "",
+      isHouskeeping: 0, // Default to false
+    })
+    .$returningId();
+
 }

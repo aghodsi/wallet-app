@@ -8,6 +8,7 @@ export const portfolioTable = mysqlTable('portfolio', {
     symbol: varchar({ length: 255 }),
     type: varchar({ length: 50, enum: ["Current", "Saving", "Investment"]}).default("Investment").notNull(),
     institutionId : int('institution_id').references(() => institutionTable.id, { onDelete: 'cascade' }).notNull(),
+    cashBalance: real('cash_balance').default(0),
     tags: varchar({ length: 500 }).default(''),
 });
 
@@ -17,13 +18,16 @@ export const transactionTable = mysqlTable('transaction', {
         .notNull()
         .references(() => portfolioTable.id, { onDelete: 'cascade' }),
     date: varchar({ length: 100 }).notNull(),
-    type: varchar({ length: 50, enum:["Buy", "Sell", "Divident", "Deposit", "Withdrag"]}).notNull(), // e.g., 'buy', 'sell', 'dividend'
+    type: varchar({ length: 50, enum:["Buy", "Sell", "Dividend", "Deposit", "Withdraw"]}).notNull(), // e.g., 'buy', 'sell', 'dividend'
     asset: varchar({ length: 255 }).notNull(),
     quantity: int('quantity').notNull(),
     price: real('price').notNull(),
     commision: real('commission').notNull(),
+    recurrence: varchar({ length: 50 } ), // cron expression for recurring transactions
     tax: real('tax').notNull(),
     tags: varchar({ length: 500 }).default(''),
+    notes: varchar({ length: 500 }).default(''),
+    isHouskeeping: int('is_houskeeping').notNull().default(0), // 0 for false, 1 for true
 });
 
 export const institutionTable = mysqlTable('institution', {
