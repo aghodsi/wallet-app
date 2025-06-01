@@ -1,16 +1,15 @@
-import { userPortfolios } from "~/stateManagement/portfolioContext";
+import { usePortfolioDispatch, userPortfolios } from "~/stateManagement/portfolioContext";
 import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/button";
 import { useEffect, useState } from "react";
 import { PortfolioCreation } from "~/components/portfolioCreation";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { CurrencyType } from "~/datatypes/currency";
-import { fetchCurrencies, fetchInstitutions } from "~/db/function";
+import { fetchCurrencies, fetchInstitutions } from "~/db/actions";
 import { useFetcher, useParams, useSearchParams } from "react-router";
 import { Toaster } from "~/components/ui/sonner";
 import { toast } from "sonner";
 import { TransactionCreation } from "~/components/transactionCreation";
-import { set } from "date-fns";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -46,6 +45,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function Home({ loaderData }: Route.ComponentProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const portfolios = userPortfolios();
+  const portfolioDispatch = usePortfolioDispatch()
   const [openPortfolio, setOpenPortfolio] = useState(false);
   const [openTransaction, setOpenTransaction] = useState(false);
   console.log("Portfolios from Home:", portfolios);
@@ -58,6 +58,35 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     setOpenPortfolio(action === "createPortfolio");
     setOpenTransaction(action === "createTransaction");
   }, [searchParams]);
+
+  // Handle fetcher responses
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      if (fetcher.data.error) {
+        const errorMessage =
+          fetcher.data.error.message || "Unknown error occurred";
+        toast.error(`Error: ${errorMessage}`);
+      } else {
+        // Determine what was created based on the action
+        if (fetcher.data.action == "createTransaction") {
+          toast.success("Transaction added successfully!");
+          setOpenTransaction(false);
+        } else {
+          toast.success("Portfolio created successfully!");
+          console.log("Portfolios after creation:", fetcher.data);
+          // portfolioDispatch({
+          //   type: "added",
+          //   portfolio: fetcher.data.map((p) => ({
+          //     id: p.id,
+          //     name: p.name,
+          //     currency: p.currency
+          //   ),
+          // });
+          setOpenPortfolio(false);
+        }
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
 
   return (
     <>
@@ -78,21 +107,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         onCreate={(t) => {
           console.log("Transaction created:", t);
           toast.info("Adding transaction...");
-          // Submit the transaction data to the server
           const formData = new FormData();
           formData.append("transaction", JSON.stringify(t));
           fetcher.submit(formData, {
             method: "post",
             action: "/createTransaction",
           });
-          if (!fetcher.data?.error) {
-            toast.success("Transaction added successfully!");
-            setOpenTransaction(false);
-          } else {
-            toast.error(
-              "Error creating transaction: " + fetcher.data?.error.message
-            );
-          }
         }}
         portfolios={portfolios}
         selectedPortfolioId={portfolios[0]?.id || 0}
@@ -105,26 +125,16 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         onCreate={(p) => {
           console.log("Portfolio created:", p);
           toast.info("Creating portfolio...");
-          // Submit the portfolio data to the server
           const formData = new FormData();
           formData.append("portfolio", JSON.stringify(p));
           fetcher.submit(formData, {
             method: "post",
             action: "/createPortfolio",
           });
-          if (!fetcher.data?.error) {
-            toast.success("Portfolio created successfully!");
-            setOpenPortfolio(false);
-          } else {
-            toast.error(
-              "Error creating portfolio: " + fetcher.data?.error.message
-            );
-          }
         }}
         currencies={loaderData.currencies}
         institutions={loaderData.institutions}
       />
-
       <Toaster />
     </>
   );

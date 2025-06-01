@@ -129,15 +129,26 @@ export async function createInstitution(institution: InstitutionType) {
     .$returningId();
 }
 
-
-
 export async function createTransaction(transaction: TransactionType) {
-  if((transaction.type === "Buy" || transaction.type === "Sell" ||  transaction.type === "Dividend") && transaction.targetPortfolioId && transaction.targetPortfolioId !== transaction.portfolioId) {
+  console.log("Creating transaction (in DB Actions):", transaction);
+  let [hasHouskeeping, houskeepingId] = [
+    (transaction.type === "Buy" ||
+      transaction.type === "Sell" ||
+      transaction.type === "Dividend") &&
+      transaction.targetPortfolioId &&
+      transaction.targetPortfolioId !== transaction.portfolioId,
+    0,
+  ];
+  if (hasHouskeeping) {
+    console.log(
+      "Creating housekeeping transaction for transfer between portfolios"
+    );
     // Handle transfer between portfolios
-    db.insert(transactionTable)
+    const housekeepingResult = await db
+      .insert(transactionTable)
       .values({
-        portfolioId: transaction.targetPortfolioId,
-        date: new Date().toISOString(),
+        portfolioId: transaction.targetPortfolioId!,
+        date: transaction.date,
         type: transaction.type === "Buy" ? "Withdraw" : "Deposit", // Adjust type for transfer
         asset: "Cash",
         quantity: transaction.quantity,
@@ -148,24 +159,30 @@ export async function createTransaction(transaction: TransactionType) {
         isHouskeeping: 1, // Mark as housekeeping transaction
       })
       .$returningId();
-
+    houskeepingId =
+      Array.isArray(housekeepingResult) && housekeepingResult.length > 0
+        ? housekeepingResult[0].id
+        : 0;
+    console.log("Housekeeping transaction created with ID:", houskeepingId);
   }
-  return db
-    .insert(transactionTable)
-    .values({
-      portfolioId: transaction.portfolioId,
-      date: transaction.date,
-      type: transaction.type,
-      asset: transaction.asset,
-      quantity: transaction.quantity,
-      price: transaction.price,
-      commision: transaction.commision,
-      recurrence: transaction.recurrence || "",
-      tax: transaction.tax,
-      tags: transaction.tags || "",
-      notes: transaction.notes || "",
-      isHouskeeping: 0, // Default to false
-    })
-    .$returningId();
-
+  return [
+    db
+      .insert(transactionTable)
+      .values({
+        portfolioId: transaction.portfolioId,
+        date: transaction.date,
+        type: transaction.type,
+        asset: transaction.asset,
+        quantity: transaction.quantity,
+        price: transaction.price,
+        commision: transaction.commision,
+        recurrence: transaction.recurrence || "",
+        tax: transaction.tax,
+        tags: transaction.tags || "",
+        notes: transaction.notes || "",
+        isHouskeeping: 0, // Default to false
+      }),
+    hasHouskeeping,
+    houskeepingId,
+  ];
 }

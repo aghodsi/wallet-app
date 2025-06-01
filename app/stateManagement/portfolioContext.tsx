@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer } from 'react';
 import type { PortfolioType } from '~/datatypes/portfolio';
 
 export const PortfoliosContext = createContext([] as PortfolioType[]);
-export const PortfolioDispatchContext = createContext({});
+export const PortfolioDispatchContext = createContext({} as React.Dispatch<PortfolioActionType>);
 
 export function PortfolioProvider({ children, initialPortfolios }: { children: React.ReactNode, initialPortfolios: PortfolioType[] }) {
   const [portfolios, dispatch] = useReducer(

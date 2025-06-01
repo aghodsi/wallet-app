@@ -1,13 +1,36 @@
-
-import {c } from "~/db/function";
-import type { Route } from "./+types/createPortfolio";
+import { createTransaction } from "~/db/actions";
+import type { Route } from "./+types/createTransaction";
 
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
-  const portfolioData = JSON.parse(formData.get("portfolio") as string);
+  const transactionData = JSON.parse(formData.get("transaction") as string);
 
   // Call your database or API to create the portfolio
-  const createdPortfolio = await createPortfolio(portfolioData);
+  const [hasHouskeeping, housekeepingId, createdTransactionPromise] =
+    await createTransaction(transactionData);
+  const createdTransactionResult = await createdTransactionPromise;
+  if (
+    !Array.isArray(createdTransactionResult) ||
+    createdTransactionResult.length <= 0
+  ) {
+    console.log("Error creating transaction:", createdTransactionResult);
+    return {
+      ok: false,
+      error: "Failed to create transaction",
+      action: "createTransaction",
+      data: null,
+    };
+  }
+  const createdTransaction =
+    Array.isArray(createdTransactionResult) &&
+    createdTransactionResult.length > 0
+      ? createdTransactionResult[0].insertId
+      : undefined;
 
-  return createdPortfolio;
+  return {
+    ok: true,
+    data: [hasHouskeeping, housekeepingId, createdTransaction],
+    action: "createTransaction",
+    error: undefined,
+  };
 }

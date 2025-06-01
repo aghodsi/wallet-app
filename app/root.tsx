@@ -6,10 +6,20 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import {
+  QueryClient,
+  QueryClientProvider,
 
+} from "@tanstack/react-query";
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import type { Route } from "./+types/root";
 import "./app.css";
-import { fetchCurrenciesByIds, fetchDefaultCurrency, fetchInstitutionByIds, fetchPortfolios } from "./db/function";
+import {
+  fetchCurrenciesByIds,
+  fetchDefaultCurrency,
+  fetchInstitutionByIds,
+  fetchPortfolios,
+} from "./db/actions";
 import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import type { PortfolioType } from "./datatypes/portfolio";
@@ -45,54 +55,113 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+const queryClient = new QueryClient();
+
 export async function loader({ params }: Route.LoaderArgs) {
-  const pf_from_db = await fetchPortfolios();
+  // const pf_from_db = await fetchPortfolios();
+  const pf_from_db = await queryClient.fetchQuery({
+    queryKey: ["portfolios"], 
+    queryFn: fetchPortfolios,
+  });
   const currencyIds = pf_from_db.map((pf) => pf.currency);
   const institutionIds = pf_from_db.map((pf) => pf.institutionId);
-  const currencies = await fetchCurrenciesByIds(currencyIds);
-  const institutions = await fetchInstitutionByIds(institutionIds);
-  
-  const portFoliosMapped = pf_from_db.map((pf) => ({
-    id: pf.id,
-    name: pf.name,
-    currency: currencies.find((c) => c.id === pf.currency) ?? { id: 1, code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 1, lastUpdated: new Date().toISOString() },
-    symbol: pf.symbol ?? undefined,
-    type: pf.type ?? "Investment",
-    institution: institutions.find((i) => i.id === pf.institutionId) ?? { id: 1, name: "Default Institution", isDefault: true, website: "", apiKey: "", apiSecret: "", apiUrl: "", lastUpdated: new Date().toISOString(), isNew: false },
-    selected: false
-  } as PortfolioType));
+  const currencies = await queryClient.fetchQuery({
+    queryKey: ["currencies", currencyIds],  
+    queryFn: () => fetchCurrenciesByIds(currencyIds),
+  });
+  const institutions = await queryClient.fetchQuery({
+    queryKey: ["institutions", institutionIds],
+    queryFn: () => fetchInstitutionByIds(institutionIds),
+  });
+
+  const portFoliosMapped = pf_from_db.map(
+    (pf) =>
+      ({
+        id: pf.id,
+        name: pf.name,
+        currency: currencies.find((c) => c.id === pf.currency) ?? {
+          id: 1,
+          code: "USD",
+          name: "US Dollar",
+          symbol: "$",
+          exchangeRate: 1,
+          lastUpdated: new Date().toISOString(),
+        },
+        symbol: pf.symbol ?? undefined,
+        type: pf.type ?? "Investment",
+        institution: institutions.find((i) => i.id === pf.institutionId) ?? {
+          id: 1,
+          name: "Default Institution",
+          isDefault: true,
+          website: "",
+          apiKey: "",
+          apiSecret: "",
+          apiUrl: "",
+          lastUpdated: new Date().toISOString(),
+          isNew: false,
+        },
+        selected: false,
+      } as PortfolioType)
+  );
 
   if (portFoliosMapped && portFoliosMapped.length > 1) {
-    const defaultCurrencyRow = await fetchDefaultCurrency(); 
-    const defaultCurrency = defaultCurrencyRow.map((c) => ({ id: c.id, code: c.code, name: c.name, symbol: c.symbol, exchangeRate: c.exchangeRate ?? 1, lastUpdated: c.lastUpdated, isDefault: c.isDefault === 1, isNew: false }));
+    const defaultCurrencyRow = await fetchDefaultCurrency();
+    const defaultCurrency = defaultCurrencyRow.map((c) => ({
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      symbol: c.symbol,
+      exchangeRate: c.exchangeRate ?? 1,
+      lastUpdated: c.lastUpdated,
+      isDefault: c.isDefault === 1,
+      isNew: false,
+    }));
 
     portFoliosMapped.push({
       id: -1, // Use a negative ID to indicate this is a special "All" portfolio
       name: "All",
-      currency: defaultCurrency[0] ?? { id: 1, code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 1, lastUpdated: new Date().toISOString() },
+      currency: defaultCurrency[0] ?? {
+        id: 1,
+        code: "USD",
+        name: "US Dollar",
+        symbol: "$",
+        exchangeRate: 1,
+        lastUpdated: new Date().toISOString(),
+      },
       symbol: "GalleryVerticalEnd",
       type: "Investment",
-      institution: { id: 1, name: "All Institutions", isDefault: true, website: "", apiKey: "", apiSecret: "", apiUrl: "", lastUpdated: new Date().toISOString(), isNew: false },
+      institution: {
+        id: 1,
+        name: "All Institutions",
+        isDefault: true,
+        website: "",
+        apiKey: "",
+        apiSecret: "",
+        apiUrl: "",
+        lastUpdated: new Date().toISOString(),
+        isNew: false,
+      },
+      cashBalance: 0,
       selected: true,
     });
   }
   return { portFoliosMapped };
 }
 
-export default function App({
-  loaderData,
-}: Route.ComponentProps) {
+export default function App({ loaderData }: Route.ComponentProps) {
   const portfolios = loaderData.portFoliosMapped;
   return (
     <>
-      <PortfolioProvider initialPortfolios={portfolios}>
-        <SidebarLayout>
-          <Outlet />
-        </SidebarLayout>
-      </PortfolioProvider>
+      <QueryClientProvider client={queryClient}>
+        <PortfolioProvider initialPortfolios={portfolios}>
+          <SidebarLayout>
+            <Outlet />
+          </SidebarLayout>
+        </PortfolioProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
     </>
-  )
-
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
