@@ -38,6 +38,7 @@ export function usePortfolioDispatch() {
 function portfolioReducer(portfolios: PortfolioType[], action: PortfolioActionType) {
   switch (action.type) {
     case 'added': {
+      console.log("Added portfolio:", action.portfolio);
       return [...portfolios, action.portfolio];
     }
     case 'changed': {
@@ -50,10 +51,12 @@ function portfolioReducer(portfolios: PortfolioType[], action: PortfolioActionTy
       });
     }
     case 'deleted': {
+      console.log("Deleted portfolio:", action.portfolio);
       return portfolios.filter(p => p.id !== action.portfolio!.id);
     }
     case 'selected': {
       // This action is not modifying the portfolios, so we just return the current state
+      console.log("Selected portfolio:", action.portfolio);
       return portfolios.map(p => {
         if (p.id === action.portfolio!.id){
           return { ...p, selected: true };

@@ -26,7 +26,7 @@ export function PortfolioSwitcher({
   portfolios: PortfolioType[]
 }) {
   const { isMobile } = useSidebar()
-  const portfolioDispatchContext = usePortfolioDispatch();
+  const portfolioDispatch = usePortfolioDispatch();
   const [activePortfolio, setActivePortfolio] = React.useState(portfolios[0])
 
   if (!activePortfolio) {
@@ -64,7 +64,12 @@ export function PortfolioSwitcher({
             {portfolios.map((portfolio, index) => (
               <DropdownMenuItem
                 key={portfolio.name}
-                onClick={() => setActivePortfolio(portfolio)}
+                onClick={() => {
+                  setActivePortfolio(portfolio); portfolioDispatch({
+                    type: "selected",
+                    portfolio: portfolio,
+                  })
+                }}
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
@@ -79,7 +84,11 @@ export function PortfolioSwitcher({
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                 <Plus className="size-4" />
               </div>
-              <div className="text-muted-foreground font-medium">Add Portfolio</div>
+
+              <div ><a href="/?action=createPortfolio"
+                className="text-muted-foreground font-medium">
+                <span>Add Portfolio</span>
+              </a></div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

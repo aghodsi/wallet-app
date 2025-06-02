@@ -30,13 +30,13 @@ const data = {
   actions: [
     {
       name: "Create Portfolio",
-      url: "#",
+      url: "/?action=createPortfolio",
       icon: FolderPlus,
       needsPortfolio: false,
     },
     {
       name: "Add Transaction",
-      url: "#",
+      url: "/?action=createTransaction",
       icon: Plus,
       needsPortfolio: true,
     },
@@ -44,7 +44,7 @@ const data = {
   navItems: [
     {
       name: "Overview",
-      url: "#",
+      url: "/portfolio",
       icon: ChartNoAxesCombined,
       needsPortfolio: true,
     },

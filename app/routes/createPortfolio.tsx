@@ -11,7 +11,7 @@ export async function action({ request }: Route.ActionArgs) {
     const createdPortfolio = await createPortfolio(portfolioData);
     return {
       ok: true,
-      data: createdPortfolio,
+      id: createdPortfolio[0].id,
       action: "createPortfolio",
       error: undefined,
     };

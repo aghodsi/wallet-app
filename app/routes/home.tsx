@@ -1,17 +1,19 @@
 import { usePortfolioDispatch, userPortfolios } from "~/stateManagement/portfolioContext";
 import type { Route } from "./+types/home";
-import { Button } from "~/components/ui/button";
 import { useEffect, useState } from "react";
-import { PortfolioCreation } from "~/components/portfolioCreation";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { CurrencyType } from "~/datatypes/currency";
 import { fetchCurrencies, fetchInstitutions } from "~/db/actions";
-import { useFetcher, useParams, useSearchParams } from "react-router";
-import { Toaster } from "~/components/ui/sonner";
+import { useFetcher, useSearchParams } from "react-router";
 import { toast } from "sonner";
+import type { PortfolioType } from "~/datatypes/portfolio";
+import type { TransactionType } from "~/datatypes/transaction";
+import { Button } from "~/components/ui/button";
 import { TransactionCreation } from "~/components/transactionCreation";
+import { PortfolioCreation } from "~/components/portfolioCreation";
+import { Toaster } from "~/components/ui/sonner";
 
-export function meta({}: Route.MetaArgs) {
+export function meta({ }: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
     { name: "description", content: "Welcome to React Router!" },
@@ -48,6 +50,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const portfolioDispatch = usePortfolioDispatch()
   const [openPortfolio, setOpenPortfolio] = useState(false);
   const [openTransaction, setOpenTransaction] = useState(false);
+  const [createdPortfolio, setCreatedPortfolio] = useState({} as PortfolioType);
+  const [createdTransaction, setCreatedTransaction] = useState({} as TransactionType);
   console.log("Portfolios from Home:", portfolios);
 
   const fetcher = useFetcher();
@@ -73,15 +77,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           setOpenTransaction(false);
         } else {
           toast.success("Portfolio created successfully!");
-          console.log("Portfolios after creation:", fetcher.data);
-          // portfolioDispatch({
-          //   type: "added",
-          //   portfolio: fetcher.data.map((p) => ({
-          //     id: p.id,
-          //     name: p.name,
-          //     currency: p.currency
-          //   ),
-          // });
+          console.log("Portfolios after creation with id:", fetcher.data);
+          console.log(portfolioDispatch);
+          // update the id directly, there is no state depending on this
+          createdPortfolio.id = fetcher.data.id;
+          portfolioDispatch({
+            type: "added",
+            portfolio: createdPortfolio
+          });
           setOpenPortfolio(false);
         }
       }
@@ -126,6 +129,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           console.log("Portfolio created:", p);
           toast.info("Creating portfolio...");
           const formData = new FormData();
+          setCreatedPortfolio(p);
           formData.append("portfolio", JSON.stringify(p));
           fetcher.submit(formData, {
             method: "post",

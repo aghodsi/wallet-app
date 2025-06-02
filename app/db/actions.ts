@@ -20,6 +20,17 @@ const connection = await mysql.createConnection({
   database: process.env.DATABASE_NAME!,
   ssl: {},
 });
+// Constants
+const HOUSEKEEPING_TRANSACTION = 1;
+const REGULAR_TRANSACTION = 0;
+const TRANSFER_TYPES = ["Buy", "Sell", "Dividend"] as const;
+
+// Type definitions
+type CreateTransactionResult = {
+  mainTransaction: { id: number };
+  housekeepingTransaction?: { id: number };
+};
+
 const db = drizzle({ client: connection });
 
 export async function fetchPortfolios() {
@@ -54,7 +65,7 @@ export async function fetchInstitutionByIds(institutionIds: number[]) {
 }
 
 export async function fetchCurrencies() {
-  return db.select().from(currencyTable); // Adjust the table name as per your schema
+  return db.select().from(currencyTable);
 }
 
 export async function fetchDefaultCurrency() {
@@ -87,6 +98,10 @@ export async function fetchTransactionsForPortfolio(portfolioId: number) {
     .where(eq(transactionTable.portfolioId, portfolioId));
 }
 
+export async function fetchAllTransactions() {
+  return db.select().from(transactionTable);
+}
+
 export async function fetchTransactionById(transactionId: number) {
   return db
     .select()
@@ -96,93 +111,123 @@ export async function fetchTransactionById(transactionId: number) {
 }
 
 export async function createPortfolio(portfolio: PortfolioType) {
-  let institutionId = portfolio.institution.id;
-  if (portfolio.institution.isNew) {
-    const created = await createInstitution(portfolio.institution);
-    if (!created || !Array.isArray(created) || created.length === 0) {
-      throw new Error("Failed to create new institution");
-    }
-    institutionId = created[0].id;
+  try {
+    return await db.transaction(async (tx) => {
+      let institutionId = portfolio.institution.id;
+      
+      if (portfolio.institution.isNew) {
+        const created = await createInstitution(portfolio.institution);
+        if (!created || !Array.isArray(created) || created.length === 0) {
+          throw new Error("Failed to create new institution");
+        }
+        institutionId = created[0].id;
+      }
+      
+      const result = await tx.insert(portfolioTable).values({
+        name: portfolio.name,
+        currency: portfolio.currency.id,
+        symbol: portfolio.symbol,
+        type: portfolio.type || "Investment",
+        institutionId: institutionId,
+        tags: portfolio.tags || "",
+      }).$returningId();
+      
+      return result;
+    });
+  } catch (error) {
+    console.error("Error creating portfolio:", error);
+    throw new Error(`Failed to create portfolio: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return db.insert(portfolioTable).values({
-    name: portfolio.name,
-    currency: portfolio.currency.id,
-    symbol: portfolio.symbol,
-    type: portfolio.type || "Investment",
-    institutionId: institutionId,
-    tags: portfolio.tags || "",
-  });
 }
 
 export async function createInstitution(institution: InstitutionType) {
-  return db
-    .insert(institutionTable)
-    .values({
-      name: institution.name,
-      isDefault: institution.isDefault ? 1 : 0,
-      website: institution.website,
-      apiKey: institution.apiKey,
-      apiSecret: institution.apiSecret,
-      apiUrl: institution.apiUrl,
-      lastUpdated: new Date().toISOString(),
-    })
-    .$returningId();
-}
-
-export async function createTransaction(transaction: TransactionType) {
-  console.log("Creating transaction (in DB Actions):", transaction);
-  let [hasHouskeeping, houskeepingId] = [
-    (transaction.type === "Buy" ||
-      transaction.type === "Sell" ||
-      transaction.type === "Dividend") &&
-      transaction.targetPortfolioId &&
-      transaction.targetPortfolioId !== transaction.portfolioId,
-    0,
-  ];
-  if (hasHouskeeping) {
-    console.log(
-      "Creating housekeeping transaction for transfer between portfolios"
-    );
-    // Handle transfer between portfolios
-    const housekeepingResult = await db
-      .insert(transactionTable)
+  try {
+    return db
+      .insert(institutionTable)
       .values({
-        portfolioId: transaction.targetPortfolioId!,
-        date: transaction.date,
-        type: transaction.type === "Buy" ? "Withdraw" : "Deposit", // Adjust type for transfer
-        asset: "Cash",
-        quantity: transaction.quantity,
-        price: transaction.price,
-        commision: transaction.commision,
-        tax: transaction.tax,
-        notes: `Tansfer to other portfolio for purchase of asset ${transaction.asset}`,
-        isHouskeeping: 1, // Mark as housekeeping transaction
+        name: institution.name,
+        isDefault: institution.isDefault ? 1 : 0,
+        website: institution.website,
+        apiKey: institution.apiKey,
+        apiSecret: institution.apiSecret,
+        apiUrl: institution.apiUrl,
+        lastUpdated: new Date().toISOString(),
       })
       .$returningId();
-    houskeepingId =
-      Array.isArray(housekeepingResult) && housekeepingResult.length > 0
-        ? housekeepingResult[0].id
-        : 0;
-    console.log("Housekeeping transaction created with ID:", houskeepingId);
+  } catch (error) {
+    console.error("Error creating institution:", error);
+    throw new Error(`Failed to create institution: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return [
-    db
-      .insert(transactionTable)
-      .values({
-        portfolioId: transaction.portfolioId,
-        date: transaction.date,
-        type: transaction.type,
-        asset: transaction.asset,
-        quantity: transaction.quantity,
-        price: transaction.price,
-        commision: transaction.commision,
-        recurrence: transaction.recurrence || "",
-        tax: transaction.tax,
-        tags: transaction.tags || "",
-        notes: transaction.notes || "",
-        isHouskeeping: 0, // Default to false
-      }),
-    hasHouskeeping,
-    houskeepingId,
-  ];
+}
+
+export async function createTransaction(transaction: TransactionType): Promise<CreateTransactionResult> {
+  try {
+    console.log("Creating transaction (in DB Actions):", transaction);
+    
+    return await db.transaction(async (tx) => {
+      // Create main transaction
+      const mainTransaction = await tx
+        .insert(transactionTable)
+        .values({
+          portfolioId: transaction.portfolioId,
+          date: transaction.date,
+          type: transaction.type,
+          asset: transaction.asset,
+          quantity: transaction.quantity,
+          price: transaction.price,
+          commision: transaction.commision,
+          recurrence: transaction.recurrence || "",
+          tax: transaction.tax,
+          tags: transaction.tags || "",
+          notes: transaction.notes || "",
+          isHouskeeping: REGULAR_TRANSACTION,
+        })
+        .$returningId();
+      
+      const result: CreateTransactionResult = {
+        mainTransaction: mainTransaction[0]
+      };
+      
+      // Handle transfer between portfolios
+      const needsHousekeeping = (
+        TRANSFER_TYPES.includes(transaction.type as any) &&
+        transaction.targetPortfolioId &&
+        transaction.targetPortfolioId !== transaction.portfolioId
+      );
+      
+      if (needsHousekeeping) {
+        console.log("Creating housekeeping transaction for transfer between portfolios");
+        
+        const housekeepingType = transaction.type === "Buy" ? "Withdraw" : "Deposit";
+        
+        const housekeepingTransaction = await tx
+          .insert(transactionTable)
+          .values({
+            portfolioId: transaction.targetPortfolioId!,
+            date: transaction.date,
+            type: housekeepingType,
+            asset: "Cash",
+            quantity: transaction.quantity,
+            price: transaction.price,
+            commision: transaction.commision,
+            tax: transaction.tax,
+            notes: `Transfer to other portfolio for purchase of asset ${transaction.asset}`,
+            isHouskeeping: HOUSEKEEPING_TRANSACTION,
+          })
+          .$returningId();
+        
+        result.housekeepingTransaction = housekeepingTransaction[0];
+        if (!result.housekeepingTransaction) {
+          tx.rollback();
+          throw new Error("Failed to create housekeeping transaction");
+        }
+        console.log("Housekeeping transaction created");
+      }
+      
+      return result;
+    });
+  } catch (error) {
+    console.error("Error creating transaction:", error);
+    throw new Error(`Failed to create transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

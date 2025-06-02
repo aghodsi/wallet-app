@@ -83,7 +83,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
     props.onCreate({
       id: getRndInteger(1, 9999),
       portfolioId,
-      targetPortfolioId: showDifferentPortfolio ? targetPortfolioId : undefined,
+      targetPortfolioId: showDifferentPortfolio ? targetPortfolioId : portfolioId,
       date,
       type,
       asset,
@@ -265,14 +265,13 @@ export function TransactionCreation(props: TransactionCreationProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="quantity-input">Quantity</Label>
-                  <InputWithIcon 
+                  <Input 
                     id="quantity-input"
                     type="number"
                     step="0.000001"
                     placeholder="0"
                     value={quantity}
                     onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)} 
-                    startIcon={convertCurrencyToIcon(currency?.code || "USD")}
                     className="max-w-sm"
                   />
                 </div>
