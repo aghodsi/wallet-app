@@ -27,7 +27,7 @@ export function PortfolioSwitcher({
 }) {
   const { isMobile } = useSidebar()
   const portfolioDispatch = usePortfolioDispatch();
-  const [activePortfolio, setActivePortfolio] = React.useState(portfolios[0])
+  const [activePortfolio, setActivePortfolio] = React.useState(portfolios.find(p => p.selected) || null)
 
   if (!activePortfolio) {
     return null
