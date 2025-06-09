@@ -22,6 +22,8 @@ import {
 } from "./ui/select";
 import { getRndInteger } from "~/lib/utils";
 import { Label } from "./ui/label";
+import { toast } from "sonner";
+import { Toaster } from "./ui/sonner";
 
 type PortfolioCreationProps = {
   open: boolean;
@@ -73,6 +75,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
       institution,
       tags: tags.map((tag) => tag.value).join(","),
       selected: false,
+      createdAt: new Date().toISOString(),
     } as PortfolioType);
     setName("");
     setCurrency(props.currencies[0] || currency);
@@ -83,6 +86,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
   };
 
   return (
+    <>
     <Dialog open={props.open} onOpenChange={props.openChange}>
       <DialogContent>
         <DialogHeader>
@@ -96,7 +100,9 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
             onChange={(e) => setName(e.target.value)}
             required
           />
-          <Label htmlFor="currency-select">Select the currency for your portfolio</Label>
+          <Label htmlFor="currency-select">
+            Select the currency for your portfolio
+          </Label>
           <Select
             key="currency-select"
             value={currency.code}
@@ -123,7 +129,9 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
               ))}
             </SelectContent>
           </Select>
-          <Label htmlFor="portfolio-type-select">Select the type of your portfolio</Label>
+          <Label htmlFor="portfolio-type-select">
+            Select the type of your portfolio
+          </Label>
           <Select
             key="portfolio-type-select"
             value={type}
@@ -161,11 +169,18 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
               ))}
             </div>
           </div>
-          <Label htmlFor="institution-select">Select institution which holds your portfolio</Label>
+          <Label htmlFor="institution-select">
+            Select institution which holds your portfolio
+          </Label>
           <MultipleSelector
             key={"institution-select"}
             placeholder="Select Institution"
             maxSelected={1}
+            onMaxSelected={() => {
+              toast.info(
+                "You can only select one institution for a portfolio."
+              );
+            }}
             creatable={true}
             defaultOptions={props.institutions.map((inst) => ({
               value: inst.id.toString(),
@@ -194,9 +209,6 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
                   isNew: true,
                 }
               );
-            }}
-            onMaxSelected={() => {
-              document.getElementById("warning")!.hidden = false;
             }}
           />
           <div id="error" className="text-red-400" hidden>
@@ -227,6 +239,8 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <Toaster />
+    </>
   );
 }
 

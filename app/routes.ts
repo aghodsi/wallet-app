@@ -6,4 +6,6 @@ export default [
     route("/createPortfolio", "routes/createPortfolio.tsx"),
     route("/createTransaction", "routes/createTransaction.tsx"),
     route("/portfolio", "routes/portfolio.tsx"),
+    route("/searchSymbol", "routes/searchSymbol.tsx"),
+    route("/fetchAssetChart", "routes/fetchAssetChart.tsx"),
 ] satisfies RouteConfig;

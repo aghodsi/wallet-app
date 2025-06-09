@@ -19,13 +19,12 @@ import {
 } from "~/components/ui/sidebar"
 import { NavComponentCollapsable } from "./navComponentCollapsable"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
-import { ne } from "drizzle-orm"
 
 const data = {
   user: {
     name: "Arya",
     email: "me@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "/snitch.svg",
   },
   actions: [
     {
@@ -98,7 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavComponentCollapsable items={data.settingsNavItems} title={"Configuration"} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {/* <NavUser user={data.user} /> */}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

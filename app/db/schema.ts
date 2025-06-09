@@ -1,4 +1,5 @@
-import { int, real, mysqlTable, varchar } from 'drizzle-orm/mysql-core';
+import { create } from 'domain';
+import { int, double, mysqlTable, varchar, json } from 'drizzle-orm/mysql-core';
 
 
 export const portfolioTable = mysqlTable('portfolio', {
@@ -8,8 +9,9 @@ export const portfolioTable = mysqlTable('portfolio', {
     symbol: varchar({ length: 255 }),
     type: varchar({ length: 50, enum: ["Current", "Saving", "Investment"]}).default("Investment").notNull(),
     institutionId : int('institution_id').references(() => institutionTable.id, { onDelete: 'cascade' }).notNull(),
-    cashBalance: real('cash_balance').default(0),
+    cashBalance: double('cash_balance').default(0),
     tags: varchar({ length: 500 }).default(''),
+    createdAt: varchar({ length: 200 }).notNull(),
 });
 
 export const transactionTable = mysqlTable('transaction', {
@@ -17,14 +19,14 @@ export const transactionTable = mysqlTable('transaction', {
     portfolioId: int('portfolio_id')
         .notNull()
         .references(() => portfolioTable.id, { onDelete: 'cascade' }),
-    date: varchar({ length: 100 }).notNull(),
+    date: varchar({ length: 200 }).notNull(),
     type: varchar({ length: 50, enum:["Buy", "Sell", "Dividend", "Deposit", "Withdraw"]}).notNull(), // e.g., 'buy', 'sell', 'dividend'
     asset: varchar({ length: 255 }).notNull(),
     quantity: int('quantity').notNull(),
-    price: real('price').notNull(),
-    commision: real('commission').notNull(),
+    price: double('price').notNull(),
+    commision: double('commission').notNull(),
     recurrence: varchar({ length: 50 } ), // cron expression for recurring transactions
-    tax: real('tax').notNull(),
+    tax: double('tax').notNull(),
     tags: varchar({ length: 500 }).default(''),
     notes: varchar({ length: 500 }).default(''),
     isHouskeeping: int('is_houskeeping').notNull().default(0), // 0 for false, 1 for true
@@ -38,7 +40,7 @@ export const institutionTable = mysqlTable('institution', {
     apiKey: varchar({ length: 255 }),
     apiSecret: varchar({ length: 255 }),
     apiUrl: varchar({ length: 255 }),
-    lastUpdated: varchar({ length: 50 })
+    lastUpdated: varchar({ length: 200 })
 });
 
 export const currencyTable = mysqlTable('currency', {
@@ -46,7 +48,44 @@ export const currencyTable = mysqlTable('currency', {
     code: varchar({ length: 10 }).notNull(),
     name: varchar({ length: 255 }).notNull(),
     symbol: varchar({ length: 10 }).notNull(),
-    exchangeRate: real('exchange_rate'),
+    exchangeRate: double('exchange_rate'),
     isDefault: int('is_default').notNull().default(0),
-    lastUpdated: varchar({ length: 50 }).notNull()
+    lastUpdated: varchar({ length: 200 }).notNull()
 });
+
+export const assetTable = mysqlTable('asset', {
+    id: int().autoincrement().primaryKey(),
+    symbol: varchar('symbol', { length: 20 }).notNull(),
+    currency: varchar({ length: 10 }).notNull(),
+    exchangeName: varchar({ length: 50 }),
+    fullExchangeName: varchar({ length: 100 }),
+    instrumentType: varchar({ length: 20 }),
+    timezone: varchar({ length: 10 }),
+    exchangeTimezoneName: varchar({ length: 50 }),
+    longName: varchar({ length: 255 }),
+    shortName: varchar({ length: 255 }),
+    quotes: json('quotes').$type<{
+        date: string;
+        high?: number;
+        volume?: number;
+        open?: number;
+        low?: number;
+        close?: number;
+        adjclose?: number;
+    }[]>(),
+    events: json('events').$type<{
+        dividends: {
+            amount: number;
+            date: string; // epoch time in milliseconds
+        }[],
+        splits: {
+            date: string; // epoch time in milliseconds
+            numerator: number;
+            denominator: number;
+            splitRatio: string;
+        }[];
+    }>(),
+    isFromApi: int('is_from_api').notNull().default(0), // 0 for false, 1 for true
+    lastUpdated: varchar({ length: 200 }).notNull()
+});
+

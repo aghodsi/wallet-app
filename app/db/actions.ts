@@ -1,16 +1,18 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  assetTable,
   currencyTable,
   institutionTable,
   portfolioTable,
   transactionTable,
 } from "./schema";
 import mysql from "mysql2/promise";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, desc } from "drizzle-orm";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { PortfolioType } from "~/datatypes/portfolio";
 import type { TransactionType } from "~/datatypes/transaction";
+import type { AssetType } from "~/datatypes/asset";
 
 const connection = await mysql.createConnection({
   host: process.env.DATABASE_HOST!,
@@ -114,7 +116,7 @@ export async function createPortfolio(portfolio: PortfolioType) {
   try {
     return await db.transaction(async (tx) => {
       let institutionId = portfolio.institution.id;
-      
+
       if (portfolio.institution.isNew) {
         const created = await createInstitution(portfolio.institution);
         if (!created || !Array.isArray(created) || created.length === 0) {
@@ -122,21 +124,29 @@ export async function createPortfolio(portfolio: PortfolioType) {
         }
         institutionId = created[0].id;
       }
-      
-      const result = await tx.insert(portfolioTable).values({
-        name: portfolio.name,
-        currency: portfolio.currency.id,
-        symbol: portfolio.symbol,
-        type: portfolio.type || "Investment",
-        institutionId: institutionId,
-        tags: portfolio.tags || "",
-      }).$returningId();
-      
+
+      const result = await tx
+        .insert(portfolioTable)
+        .values({
+          name: portfolio.name,
+          currency: portfolio.currency.id,
+          symbol: portfolio.symbol,
+          type: portfolio.type || "Investment",
+          institutionId: institutionId,
+          createdAt: new Date().toString(),
+          tags: portfolio.tags || "",
+        })
+        .$returningId();
+
       return result;
     });
   } catch (error) {
     console.error("Error creating portfolio:", error);
-    throw new Error(`Failed to create portfolio: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to create portfolio: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 }
 
@@ -156,14 +166,66 @@ export async function createInstitution(institution: InstitutionType) {
       .$returningId();
   } catch (error) {
     console.error("Error creating institution:", error);
-    throw new Error(`Failed to create institution: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to create institution: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 }
 
-export async function createTransaction(transaction: TransactionType): Promise<CreateTransactionResult> {
+export async function getMostRecentAssetBySymbol(symbol: string) {
+  return db
+    .select()
+    .from(assetTable)
+    .where(eq(assetTable.symbol, symbol))
+    .orderBy(desc(assetTable.lastUpdated))
+    .limit(1);
+}
+
+export async function getAllAssetBySymbolOrderedDesc(symbol: string) {
+  return db
+    .select()
+    .from(assetTable) 
+    .where(eq(assetTable.symbol, symbol))
+    .orderBy(desc(assetTable.lastUpdated));
+}
+
+export async function getAssetsBySymbols(symbols: string[]) {
+  return db
+    .select()
+    .from(assetTable)
+    .where(inArray(assetTable.symbol, symbols));
+}
+
+export async function getAllAssets() {
+  return db.select().from(transactionTable);
+}
+
+export async function createAsset(asset: AssetType) {
+  return db.insert(assetTable).values({
+    symbol: asset.symbol,
+    currency: asset.currency,
+    exchangeName: asset.exchangeName,
+    fullExchangeName: asset.fullExchangeName,
+    instrumentType: asset.instrumentType,
+    timezone: asset.timezone,
+    exchangeTimezoneName: asset.exchangeTimezoneName,
+    longName: asset.longName,
+    shortName: asset.shortName,
+    quotes: asset.quotes,
+    events: asset.events,
+    isFromApi: asset.isFromApi ? 1 : 0,
+    lastUpdated: new Date().toString(),
+  }).$returningId();
+}
+
+export async function createTransaction(
+  transaction: TransactionType
+): Promise<CreateTransactionResult> {
   try {
     console.log("Creating transaction (in DB Actions):", transaction);
-    
+
     return await db.transaction(async (tx) => {
       // Create main transaction
       const mainTransaction = await tx
@@ -172,7 +234,7 @@ export async function createTransaction(transaction: TransactionType): Promise<C
           portfolioId: transaction.portfolioId,
           date: transaction.date,
           type: transaction.type,
-          asset: transaction.asset,
+          asset: transaction.asset.symbol,
           quantity: transaction.quantity,
           price: transaction.price,
           commision: transaction.commision,
@@ -183,23 +245,25 @@ export async function createTransaction(transaction: TransactionType): Promise<C
           isHouskeeping: REGULAR_TRANSACTION,
         })
         .$returningId();
-      
+
       const result: CreateTransactionResult = {
-        mainTransaction: mainTransaction[0]
+        mainTransaction: mainTransaction[0],
       };
-      
+
       // Handle transfer between portfolios
-      const needsHousekeeping = (
+      const needsHousekeeping =
         TRANSFER_TYPES.includes(transaction.type as any) &&
         transaction.targetPortfolioId &&
-        transaction.targetPortfolioId !== transaction.portfolioId
-      );
-      
+        transaction.targetPortfolioId !== transaction.portfolioId;
+
       if (needsHousekeeping) {
-        console.log("Creating housekeeping transaction for transfer between portfolios");
-        
-        const housekeepingType = transaction.type === "Buy" ? "Withdraw" : "Deposit";
-        
+        console.log(
+          "Creating housekeeping transaction for transfer between portfolios"
+        );
+
+        const housekeepingType =
+          transaction.type === "Buy" ? "Withdraw" : "Deposit";
+
         const housekeepingTransaction = await tx
           .insert(transactionTable)
           .values({
@@ -215,7 +279,7 @@ export async function createTransaction(transaction: TransactionType): Promise<C
             isHouskeeping: HOUSEKEEPING_TRANSACTION,
           })
           .$returningId();
-        
+
         result.housekeepingTransaction = housekeepingTransaction[0];
         if (!result.housekeepingTransaction) {
           tx.rollback();
@@ -223,11 +287,15 @@ export async function createTransaction(transaction: TransactionType): Promise<C
         }
         console.log("Housekeeping transaction created");
       }
-      
+
       return result;
     });
   } catch (error) {
     console.error("Error creating transaction:", error);
-    throw new Error(`Failed to create transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to create transaction: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 }

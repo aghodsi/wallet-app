@@ -11,4 +11,5 @@ export type PortfolioType = {
   cashBalance: number;
   tags?: string;
   selected: boolean;
+  createdAt: string;
 };
