@@ -2,6 +2,29 @@ import { getHistoricalData, type ValidInterval } from "~/api/fetcherYahoo";
 import type { Route } from "../+types/fetchAssetChart";
 import { createAsset, getAllAssetBySymbolOrderedDesc } from "~/db/actions";
 import type { AssetType } from "~/datatypes/asset";
+import { int } from "drizzle-orm/mysql-core";
+
+function defineBestInterval(period1: string, period2: string): ValidInterval {
+  let interval = "1d"
+  const period1Date = new Date(period1);
+  const period2Date = new Date(period2);
+  const timeDifferenceInDays = Math.round((period2Date.getTime() - period1Date.getTime())/ (1000 * 60 * 60 * 24)); // Convert milliseconds to days
+ if( timeDifferenceInDays <= 1) {
+    interval = "1m"; // 1 minute interval for very short periods
+  }
+  else if (timeDifferenceInDays > 1 && timeDifferenceInDays <= 3) {
+    interval = "5m"; // 5 minute interval for short periods
+  }
+  else if (timeDifferenceInDays > 3 && timeDifferenceInDays <= 7) {
+    interval = "15m"; // 15 minute interval for periods up to a week
+  }
+  else if (timeDifferenceInDays > 7 && timeDifferenceInDays <= 30) {
+    interval = "60m"; // 60 minute interval for periods up to a month
+  }
+  // in all other cases, we will use daily interval
+    
+  return interval as ValidInterval;
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   let url = new URL(request.url);
@@ -12,17 +35,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       new Date().setFullYear(new Date().getFullYear() - 5)
     ).toISOString(); // Default to 5 years ago if period1 is not provided;
   let period2 = url.searchParams.get("period2") || new Date().toISOString(); // Default to now if period2 is not provided
-  let interval = url.searchParams.get("interval") || "1d"; // Default to daily interval if not provided
+  
 
   if (!query) {
     return { error: "No query provided" };
   }
 
   try {
-    console.log(`"Fetching asset chart for query: ${query}
-       period1: ${period1} ,
-       period2: ${period2},
-       interval:${interval}`);
+   
     const assetData = await getAllAssetBySymbolOrderedDesc(query);
 
     // fetch the most recent asset data from DB
@@ -40,10 +60,14 @@ export async function loader({ request }: Route.LoaderArgs) {
         period1 = lastUpdated.toISOString();
       }
     }
-     const period1Date = new Date(period1);
+    const period1Date = new Date(period1);
     const period2Date = new Date(period2);
     const timeDifferenceMs = period2Date.getTime() - period1Date.getTime();
-
+    let interval = url.searchParams.get("interval") || defineBestInterval(period1, period2); // choose a good interval based on the period1 and period2 dates
+     console.log(`"Fetching asset chart for query: ${query}
+       period1: ${period1} ,
+       period2: ${period2},
+       interval:${interval}`);
     console.log(`Time difference in ms: ${timeDifferenceMs}`);
     let assetMapped: AssetType | undefined;
     try {
