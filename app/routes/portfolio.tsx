@@ -68,12 +68,25 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
   console.log("Transactions Loader Data:", loaderData.transactions);
 
   // Compute filtered transactions directly without useState
-  const transactions =
+  const rawTransactions =
     selectedPortfolio && selectedPortfolio.id >= 0
       ? loaderData.transactions.filter(
           (t) => t.portfolioId === selectedPortfolio.id
         )
       : loaderData.transactions || [];
+
+  // Transform database transactions to match TransactionType interface
+  const transactions: TransactionType[] = rawTransactions.map(t => ({
+    ...t,
+    asset: {
+      symbol: t.asset,
+      isFetchedFromApi: false, // Default value, could be enhanced based on your logic
+    },
+    isHousekeeping: Boolean(t.isHouskeeping), // Convert number to boolean
+    recurrence: t.recurrence || undefined, // Convert null to undefined
+    tags: t.tags || "", // Convert null to empty string
+    notes: t.notes || undefined, // Convert null to undefined
+  }));
 
   console.log("Selected Portfolio:", selectedPortfolio);
   console.log("Filtered Transactions:", transactions);
@@ -349,12 +362,8 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
         </div>
 
         <FactCards 
-          totalInvestment={factValues.totalInvestment}
-          totalCash={factValues.totalCash}
-          totalCommission={factValues.totalCommission}
-          totalTaxes={factValues.totalTaxes}
-          performance={factValues.performance}
-          transactionCount={factValues.transactionCount}
+          transactions={transactions}
+          assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
           currency="USD"
           timeRange={timeRangeLabels[timeRange as keyof typeof timeRangeLabels]}
         />
@@ -371,7 +380,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
             <ul className="list-disc pl-5">
               {transactions.map((transaction) => (
                 <li key={transaction.id} className="py-1">
-                  {transaction.asset} - {transaction.quantity} @ $
+                  {transaction.asset.symbol} - {transaction.quantity} @ $
                   {transaction.price} on{" "}
                   {new Date(transaction.date).toLocaleDateString()}
                 </li>
