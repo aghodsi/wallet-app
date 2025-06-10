@@ -13,8 +13,8 @@ export type ValidInterval = "1d" | "1m" | "2m" | "5m" | "15m" | "30m" | "60m" | 
 
 export async function getHistoricalData(
   symbol: string,
-  period1: string,
-  period2?: string,
+  period1: Date,
+  period2?: Date,
   interval: ValidInterval = "1d"
 ) {
   return yahooFinance.chart(symbol, {

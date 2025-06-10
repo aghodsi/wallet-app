@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ReferenceLine, Line } from "recharts"
 
 import { useIsMobile } from "~/hooks/use-mobile"
 import {
@@ -32,137 +32,119 @@ import {
 
 export const description = "An interactive area chart"
 
-const chartData = [
-  { date: "2024-04-01", desktop: 222, mobile: 150 },
-  { date: "2024-04-02", desktop: 97, mobile: 180 },
-  { date: "2024-04-03", desktop: 167, mobile: 120 },
-  { date: "2024-04-04", desktop: 242, mobile: 260 },
-  { date: "2024-04-05", desktop: 373, mobile: 290 },
-  { date: "2024-04-06", desktop: 301, mobile: 340 },
-  { date: "2024-04-07", desktop: 245, mobile: 180 },
-  { date: "2024-04-08", desktop: 409, mobile: 320 },
-  { date: "2024-04-09", desktop: 59, mobile: 110 },
-  { date: "2024-04-10", desktop: 261, mobile: 190 },
-  { date: "2024-04-11", desktop: 327, mobile: 350 },
-  { date: "2024-04-12", desktop: 292, mobile: 210 },
-  { date: "2024-04-13", desktop: 342, mobile: 380 },
-  { date: "2024-04-14", desktop: 137, mobile: 220 },
-  { date: "2024-04-15", desktop: 120, mobile: 170 },
-  { date: "2024-04-16", desktop: 138, mobile: 190 },
-  { date: "2024-04-17", desktop: 446, mobile: 360 },
-  { date: "2024-04-18", desktop: 364, mobile: 410 },
-  { date: "2024-04-19", desktop: 243, mobile: 180 },
-  { date: "2024-04-20", desktop: 89, mobile: 150 },
-  { date: "2024-04-21", desktop: 137, mobile: 200 },
-  { date: "2024-04-22", desktop: 224, mobile: 170 },
-  { date: "2024-04-23", desktop: 138, mobile: 230 },
-  { date: "2024-04-24", desktop: 387, mobile: 290 },
-  { date: "2024-04-25", desktop: 215, mobile: 250 },
-  { date: "2024-04-26", desktop: 75, mobile: 130 },
-  { date: "2024-04-27", desktop: 383, mobile: 420 },
-  { date: "2024-04-28", desktop: 122, mobile: 180 },
-  { date: "2024-04-29", desktop: 315, mobile: 240 },
-  { date: "2024-04-30", desktop: 454, mobile: 380 },
-  { date: "2024-05-01", desktop: 165, mobile: 220 },
-  { date: "2024-05-02", desktop: 293, mobile: 310 },
-  { date: "2024-05-03", desktop: 247, mobile: 190 },
-  { date: "2024-05-04", desktop: 385, mobile: 420 },
-  { date: "2024-05-05", desktop: 481, mobile: 390 },
-  { date: "2024-05-06", desktop: 498, mobile: 520 },
-  { date: "2024-05-07", desktop: 388, mobile: 300 },
-  { date: "2024-05-08", desktop: 149, mobile: 210 },
-  { date: "2024-05-09", desktop: 227, mobile: 180 },
-  { date: "2024-05-10", desktop: 293, mobile: 330 },
-  { date: "2024-05-11", desktop: 335, mobile: 270 },
-  { date: "2024-05-12", desktop: 197, mobile: 240 },
-  { date: "2024-05-13", desktop: 197, mobile: 160 },
-  { date: "2024-05-14", desktop: 448, mobile: 490 },
-  { date: "2024-05-15", desktop: 473, mobile: 380 },
-  { date: "2024-05-16", desktop: 338, mobile: 400 },
-  { date: "2024-05-17", desktop: 499, mobile: 420 },
-  { date: "2024-05-18", desktop: 315, mobile: 350 },
-  { date: "2024-05-19", desktop: 235, mobile: 180 },
-  { date: "2024-05-20", desktop: 177, mobile: 230 },
-  { date: "2024-05-21", desktop: 82, mobile: 140 },
-  { date: "2024-05-22", desktop: 81, mobile: 120 },
-  { date: "2024-05-23", desktop: 252, mobile: 290 },
-  { date: "2024-05-24", desktop: 294, mobile: 220 },
-  { date: "2024-05-25", desktop: 201, mobile: 250 },
-  { date: "2024-05-26", desktop: 213, mobile: 170 },
-  { date: "2024-05-27", desktop: 420, mobile: 460 },
-  { date: "2024-05-28", desktop: 233, mobile: 190 },
-  { date: "2024-05-29", desktop: 78, mobile: 130 },
-  { date: "2024-05-30", desktop: 340, mobile: 280 },
-  { date: "2024-05-31", desktop: 178, mobile: 230 },
-  { date: "2024-06-01", desktop: 178, mobile: 200 },
-  { date: "2024-06-02", desktop: 470, mobile: 410 },
-  { date: "2024-06-03", desktop: 103, mobile: 160 },
-  { date: "2024-06-04", desktop: 439, mobile: 380 },
-  { date: "2024-06-05", desktop: 88, mobile: 140 },
-  { date: "2024-06-06", desktop: 294, mobile: 250 },
-  { date: "2024-06-07", desktop: 323, mobile: 370 },
-  { date: "2024-06-08", desktop: 385, mobile: 320 },
-  { date: "2024-06-09", desktop: 438, mobile: 480 },
-  { date: "2024-06-10", desktop: 155, mobile: 200 },
-  { date: "2024-06-11", desktop: 92, mobile: 150 },
-  { date: "2024-06-12", desktop: 492, mobile: 420 },
-  { date: "2024-06-13", desktop: 81, mobile: 130 },
-  { date: "2024-06-14", desktop: 426, mobile: 380 },
-  { date: "2024-06-15", desktop: 307, mobile: 350 },
-  { date: "2024-06-16", desktop: 371, mobile: 310 },
-  { date: "2024-06-17", desktop: 475, mobile: 520 },
-  { date: "2024-06-18", desktop: 107, mobile: 170 },
-  { date: "2024-06-19", desktop: 341, mobile: 290 },
-  { date: "2024-06-20", desktop: 408, mobile: 450 },
-  { date: "2024-06-21", desktop: 169, mobile: 210 },
-  { date: "2024-06-22", desktop: 317, mobile: 270 },
-  { date: "2024-06-23", desktop: 480, mobile: 530 },
-  { date: "2024-06-24", desktop: 132, mobile: 180 },
-  { date: "2024-06-25", desktop: 141, mobile: 190 },
-  { date: "2024-06-26", desktop: 434, mobile: 380 },
-  { date: "2024-06-27", desktop: 448, mobile: 490 },
-  { date: "2024-06-28", desktop: 149, mobile: 200 },
-  { date: "2024-06-29", desktop: 103, mobile: 160 },
-  { date: "2024-06-30", desktop: 446, mobile: 400 },
-]
+interface ChartDataItem {
+  date: string;
+  performance: number;
+  baseline: number;
+  hasTransaction?: boolean;
+  transactionType?: "buy" | "sell";
+}
+
+interface ChartAreaInteractiveProps {
+  data?: ChartDataItem[];
+  currency?: string;
+  timeRange?: string;
+}
 
 const chartConfig = {
-  visitors: {
-    label: "Visitors",
-  },
-  desktop: {
-    label: "Desktop",
+  performance: {
+    label: "Performance",
     color: "var(--primary)",
   },
-  mobile: {
-    label: "Mobile",
-    color: "var(--primary)",
+  baseline: {
+    label: "Baseline",
+    color: "var(--muted-foreground)",
   },
 } satisfies ChartConfig
 
-export function ChartAreaInteractive() {
+export function ChartAreaInteractive({ data = [], currency = "USD", timeRange = "1Y" }: ChartAreaInteractiveProps) {
   const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("90d")
 
-  React.useEffect(() => {
-    if (isMobile) {
-      setTimeRange("7d")
-    }
-  }, [isMobile])
+  const filteredData = React.useMemo(() => {
+    if (data.length === 0) return []
 
-  const filteredData = chartData.filter((item) => {
-    const date = new Date(item.date)
-    const referenceDate = new Date("2024-06-30")
-    let daysToSubtract = 90
-    if (timeRange === "30d") {
-      daysToSubtract = 30
-    } else if (timeRange === "7d") {
-      daysToSubtract = 7
+    const now = new Date()
+    let startDate = new Date()
+
+    switch (timeRange) {
+      case "1d":
+        startDate.setDate(now.getDate() - 1)
+        break
+      case "1w":
+        startDate.setDate(now.getDate() - 7)
+        break
+      case "1m":
+        startDate.setMonth(now.getMonth() - 1)
+        break
+      case "YTD":
+        startDate = new Date(now.getFullYear(), 0, 1)
+        break
+      case "1Y":
+        startDate.setFullYear(now.getFullYear() - 1)
+        break
+      case "5Y":
+        startDate.setFullYear(now.getFullYear() - 5)
+        break
+      case "ALL":
+        return data
+      default:
+        startDate.setFullYear(now.getFullYear() - 1)
     }
-    const startDate = new Date(referenceDate)
-    startDate.setDate(startDate.getDate() - daysToSubtract)
-    return date >= startDate
-  })
+
+    return data.filter((item) => {
+      const itemDate = new Date(item.date)
+      return itemDate >= startDate
+    })
+  }, [data, timeRange])
+
+  // Calculate baseline based on selected period (cumulative investment at period start)
+  const periodBaseline = React.useMemo(() => {
+    if (filteredData.length === 0 || data.length === 0) return 0
+    
+    // If filtered data starts at the same time as full data, use the filtered start
+    // Otherwise, if the period is longer than available data, use the earliest available data point
+    const fullDataStart = data[0]?.date;
+    const filteredDataStart = filteredData[0]?.date;
+    
+    if (fullDataStart === filteredDataStart) {
+      // Period covers all available data, use the earliest baseline
+      return data[0]?.baseline || 0;
+    } else {
+      // Period is within available data, use the period start baseline
+      return filteredData[0]?.baseline || 0;
+    }
+  }, [filteredData, data])
+
+  // Calculate current performance vs period baseline
+  const currentPerformance = React.useMemo(() => {
+    if (filteredData.length === 0) return 0
+    // Use the most recent performance value
+    return filteredData[filteredData.length - 1]?.performance || 0
+  }, [filteredData])
+
+  const isPerformanceAboveBaseline = currentPerformance > periodBaseline
+
+  // Create segments with conditional fills
+  const processedData = React.useMemo(() => {
+    return filteredData.map(item => ({
+      ...item,
+      performance: item.performance,
+      baseline: item.baseline,
+      performanceAbove: item.performance > item.baseline ? item.performance : item.baseline,
+      performanceBelow: item.performance <= item.baseline ? item.performance : item.baseline,
+      transactionDot: item.hasTransaction ? item.performance : null,
+    }))
+  }, [filteredData])
+
+  const timeRangeLabels = {
+    "1d": "Last 1 day",
+    "1w": "Last 1 week", 
+    "1m": "Last 1 month",
+    "YTD": "Year to date",
+    "1Y": "Last 1 year",
+    "5Y": "Last 5 years",
+    "ALL": "All time"
+  }
 
   return (
     <Card className="@container/card">
@@ -170,72 +152,41 @@ export function ChartAreaInteractive() {
         <CardTitle>Portfolio Performance</CardTitle>
         <CardDescription>
           <span className="hidden @[540px]/card:block">
-            Total for the last 3 months
+            {timeRangeLabels[timeRange as keyof typeof timeRangeLabels]}
           </span>
-          <span className="@[540px]/card:hidden">Last 3 months</span>
+          <span className="@[540px]/card:hidden">
+            {timeRangeLabels[timeRange as keyof typeof timeRangeLabels]}
+          </span>
         </CardDescription>
-        <CardAction>
-          <ToggleGroup
-            type="single"
-            value={timeRange}
-            onValueChange={setTimeRange}
-            variant="outline"
-            className="hidden *:data-[slot=toggle-group-item]:!px-4 @[767px]/card:flex"
-          >
-            <ToggleGroupItem value="90d">Last 3 months</ToggleGroupItem>
-            <ToggleGroupItem value="30d">Last 30 days</ToggleGroupItem>
-            <ToggleGroupItem value="7d">Last 7 days</ToggleGroupItem>
-          </ToggleGroup>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger
-              className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
-              size="sm"
-              aria-label="Select a value"
-            >
-              <SelectValue placeholder="Last 3 months" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">
-                Last 3 months
-              </SelectItem>
-              <SelectItem value="30d" className="rounded-lg">
-                Last 30 days
-              </SelectItem>
-              <SelectItem value="7d" className="rounded-lg">
-                Last 7 days
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </CardAction>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer
           config={chartConfig}
           className="aspect-auto h-[250px] w-full"
         >
-          <AreaChart data={filteredData}>
+          <AreaChart data={processedData}>
             <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="fillAbove" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="5%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={1.0}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-mobile)"
+                  stopColor="#22c55e"
                   stopOpacity={0.8}
                 />
                 <stop
                   offset="95%"
-                  stopColor="var(--color-mobile)"
+                  stopColor="#22c55e"
+                  stopOpacity={0.1}
+                />
+              </linearGradient>
+              <linearGradient id="fillBelow" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  stopColor="#ef4444"
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="95%"
+                  stopColor="#ef4444"
                   stopOpacity={0.1}
                 />
               </linearGradient>
@@ -255,6 +206,27 @@ export function ChartAreaInteractive() {
                 })
               }}
             />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(value) => {
+                if (value >= 1000000) {
+                  return `$${(value / 1000000).toFixed(1)}M`;
+                } else if (value >= 1000) {
+                  return `$${(value / 1000).toFixed(1)}K`;
+                } else {
+                  return `$${value.toFixed(0)}`;
+                }
+              }}
+              label={{ 
+                value: `Portfolio Value (${currency})`, 
+                angle: -90, 
+                position: 'insideLeft',
+                style: { textAnchor: 'middle', fontSize: '12px' }
+              }}
+              width={80}
+            />
             <ChartTooltip
               cursor={false}
               defaultIndex={isMobile ? -1 : 10}
@@ -264,28 +236,58 @@ export function ChartAreaInteractive() {
                     return new Date(value).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
+                      year: "numeric",
                     })
                   }}
                   indicator="dot"
                 />
               }
             />
-            <Area
-              dataKey="mobile"
-              type="natural"
-              fill="url(#fillMobile)"
-              stroke="var(--color-mobile)"
-              stackId="a"
+            <ReferenceLine
+              y={periodBaseline}
+              stroke="var(--color-baseline)"
+              strokeDasharray="5 5"
+              strokeOpacity={0.7}
             />
             <Area
-              dataKey="desktop"
+              dataKey="performance"
               type="natural"
-              fill="url(#fillDesktop)"
-              stroke="var(--color-desktop)"
-              stackId="a"
+              fill={isPerformanceAboveBaseline ? "url(#fillAbove)" : "url(#fillBelow)"}
+              stroke="#3b82f6"
+              strokeWidth={2}
+              dot={false}
+            />
+            <Area
+              dataKey="transactionDot"
+              type="natural"
+              fill="transparent"
+              stroke="transparent"
+              strokeWidth={0}
+              dot={{ fill: "#f97316", stroke: "#ffffff", strokeWidth: 2, r: 5, fillOpacity: 1 }}
+              connectNulls={false}
             />
           </AreaChart>
         </ChartContainer>
+        
+        {/* Legend */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="h-0.5 w-6 bg-blue-500"></div>
+            <span>Performance Line</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`h-3 w-3 ${isPerformanceAboveBaseline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span>Area Fill: {isPerformanceAboveBaseline ? 'Above' : 'Below'} Baseline Average For Selected Period</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-0.5 w-6 border-t-2 border-dashed border-muted-foreground"></div>
+            <span>Baseline Reference</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-orange-500 border-2 border-white"></div>
+            <span>Transaction Events</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

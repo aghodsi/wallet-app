@@ -65,8 +65,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     const timeDifferenceMs = period2Date.getTime() - period1Date.getTime();
     let interval = url.searchParams.get("interval") || defineBestInterval(period1, period2); // choose a good interval based on the period1 and period2 dates
      console.log(`"Fetching asset chart for query: ${query}
-       period1: ${period1} ,
-       period2: ${period2},
+       period1: ${period1} (${period1Date.toISOString()}),
+       period2: ${period2} (${period2Date.toISOString()}),
        interval:${interval}`);
     console.log(`Time difference in ms: ${timeDifferenceMs}`);
     let assetMapped: AssetType | undefined;
@@ -75,8 +75,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         //only fetch data if the time difference is at least 15 minutes
         const externalChartData = await getHistoricalData(
           query,
-          period1,
-          period2,
+          period1Date,
+          period2Date,
           interval as ValidInterval
         );
         //save the external chart data to the database if needed

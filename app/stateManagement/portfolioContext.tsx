@@ -7,7 +7,7 @@ export const PortfolioDispatchContext = createContext({} as React.Dispatch<Portf
 export function PortfolioProvider({ children, initialPortfolios }: { children: React.ReactNode, initialPortfolios: PortfolioType[] }) {
   const [portfolios, dispatch] = useReducer(
     portfolioReducer,
-    initialPortfolios.sort((a, b) => a.name.localeCompare(b.name))
+    initialPortfolios.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
   );
 
   return (
