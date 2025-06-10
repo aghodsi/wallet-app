@@ -49,7 +49,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
       name: "US Dollar",
       symbol: "$",
       exchangeRate: 1,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date().getTime().toString(),
     }
   );
   const [symbol, setSymbol] = useState("");
@@ -75,7 +75,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
       institution,
       tags: tags.map((tag) => tag.value).join(","),
       selected: false,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().getTime().toString(),
     } as PortfolioType);
     setName("");
     setCurrency(props.currencies[0] || currency);

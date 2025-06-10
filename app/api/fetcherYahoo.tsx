@@ -19,7 +19,7 @@ export async function getHistoricalData(
 ) {
   return yahooFinance.chart(symbol, {
     period1: period1,
-    period2: period2 || new Date().toISOString(),
+    period2: period2 || new Date().getTime().toString(),
     interval: interval,
   });
 }

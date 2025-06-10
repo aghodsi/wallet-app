@@ -133,7 +133,7 @@ export async function createPortfolio(portfolio: PortfolioType) {
           symbol: portfolio.symbol,
           type: portfolio.type || "Investment",
           institutionId: institutionId,
-          createdAt: new Date().toString(),
+          createdAt: new Date().getTime().toString(),
           tags: portfolio.tags || "",
         })
         .$returningId();
@@ -161,7 +161,7 @@ export async function createInstitution(institution: InstitutionType) {
         apiKey: institution.apiKey,
         apiSecret: institution.apiSecret,
         apiUrl: institution.apiUrl,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date().getTime().toString(),
       })
       .$returningId();
   } catch (error) {
@@ -216,7 +216,7 @@ export async function createAsset(asset: AssetType) {
     quotes: asset.quotes,
     events: asset.events,
     isFromApi: asset.isFromApi ? 1 : 0,
-    lastUpdated: new Date().toString(),
+    lastUpdated: new Date().getTime().toString(),
   }).$returningId();
 }
 

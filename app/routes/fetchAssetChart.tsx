@@ -33,8 +33,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     url.searchParams.get("period1") ||
     new Date(
       new Date().setFullYear(new Date().getFullYear() - 5)
-    ).toISOString(); // Default to 5 years ago if period1 is not provided;
-  let period2 = url.searchParams.get("period2") || new Date().toISOString(); // Default to now if period2 is not provided
+    ).getTime().toString(); // Default to 5 years ago if period1 is not provided;
+  let period2 = url.searchParams.get("period2") || new Date().getTime().toString(); // Default to now if period2 is not provided
   
 
   if (!query) {
@@ -57,11 +57,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       const lastUpdated = new Date(mostRecentAsset.lastUpdated);
       if (!url.searchParams.get("period1")) {
         // if period1 is not provided, we will use the last updated date to fetch new data since last update
-        period1 = lastUpdated.toISOString();
+        period1 = lastUpdated.getTime().toString();
       }
     }
-    const period1Date = new Date(period1);
-    const period2Date = new Date(period2);
+    const period1Date = new Date(typeof period1 === 'string' ? parseInt(period1) : period1);
+    const period2Date = new Date(typeof period2 === 'string' ? parseInt(period2) : period2);
     const timeDifferenceMs = period2Date.getTime() - period1Date.getTime();
     let interval = url.searchParams.get("interval") || defineBestInterval(period1, period2); // choose a good interval based on the period1 and period2 dates
      console.log(`"Fetching asset chart for query: ${query}
@@ -102,7 +102,7 @@ export async function loader({ request }: Route.LoaderArgs) {
             ? mostRecentAsset.shortName!
             : externalChartData.meta.symbol || "",
           quotes: externalChartData.quotes.map((q) => ({
-            date: q.date.toString(), // convert to string for consistency.
+            date: q.date.getTime(), // convert to string for consistency.
             high: q.high === null ? undefined : q.high,
             low: q.low === null ? undefined : q.low,
             open: q.open === null ? undefined : q.open,
@@ -115,12 +115,12 @@ export async function loader({ request }: Route.LoaderArgs) {
             dividends: externalChartData.events?.dividends
               ? externalChartData.events.dividends.map((d) => ({
                   amount: d.amount,
-                  date: d.date.toString(), // convert to string for consistency
+                  date: d.date.getTime().toString() // convert to string for consistency
                 }))
               : [],
             splits: externalChartData.events?.splits
               ? externalChartData.events.splits.map((s) => ({
-                  date: s.date.toString(), // convert to string for consistency
+                  date: s.date.getTime().toString(), // convert to string for consistency
                   numerator: s.numerator,
                   denominator: s.denominator,
                   splitRatio: s.splitRatio,
