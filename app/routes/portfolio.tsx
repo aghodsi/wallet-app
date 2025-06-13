@@ -1,6 +1,8 @@
 import { userPortfolios } from "~/stateManagement/portfolioContext";
 import { FactCards } from "~/components/portfolio/factCardsComponents";
 import { ChartAreaInteractive } from "~/components/portfolio/chartsInteractiveComponent";
+import CalendarComponent from "~/components/calendarComponent";
+import { PerformanceTables } from "~/components/performanceTables";
 import type { Route } from "./+types/portfolio";
 import { fetchAllTransactions } from "~/db/actions";
 import { useQueries, useQuery } from "@tanstack/react-query";
@@ -54,7 +56,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
   transactionQueries.forEach((query, index) => {
     if (query.isLoading) {
       console.log(
-        `Loading transaction asset data for transaction ${index + 1}`
+        `Loading transaction asset data for transaction ${index + 1} and asset ${query}...`
       );
     } else if (query.isError) {
       console.error(
@@ -65,7 +67,6 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
     console.log(`Fetched asset data for transaction ${index + 1}:`, query.data);
   });
 
-  console.log("Transactions Loader Data:", loaderData.transactions);
 
   // Compute filtered transactions directly without useState
   const rawTransactions =
@@ -373,6 +374,28 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
             currency="USD" 
             timeRange={timeRange}
           />
+        </div>
+        <div className="px-4 lg:px-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-1 xl:grid-cols-3">
+            {/* Calendar Component */}
+            <div className="w-full xl:col-span-1">
+              <CalendarComponent 
+                transactions={transactions}
+                assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
+                title="Transaction Calendar"
+              />
+            </div>
+            
+            {/* Performance Tables */}
+            <div className="w-full xl:col-span-2">
+              <PerformanceTables
+                transactions={transactions}
+                assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
+                timeRange={timeRange}
+                currency="USD"
+              />
+            </div>
+          </div>
         </div>
         {transactions && transactions.length > 0 ? (
           <div className="px-4 lg:px-6">

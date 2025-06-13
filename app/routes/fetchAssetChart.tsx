@@ -1,15 +1,15 @@
 import { getHistoricalData, type ValidInterval } from "~/api/fetcherYahoo";
-import type { Route } from "../+types/fetchAssetChart";
 import { createAsset, getAllAssetBySymbolOrderedDesc } from "~/db/actions";
 import type { AssetType } from "~/datatypes/asset";
-import { int } from "drizzle-orm/mysql-core";
 
-function defineBestInterval(period1: string, period2: string): ValidInterval {
+interface LoaderArgs {
+  request: Request;
+}
+
+function defineBestInterval(period1Date: Date, period2Date: Date): ValidInterval {
   let interval = "1d"
-  const period1Date = new Date(period1);
-  const period2Date = new Date(period2);
-  const timeDifferenceInDays = Math.round((period2Date.getTime() - period1Date.getTime())/ (1000 * 60 * 60 * 24)); // Convert milliseconds to days
- if( timeDifferenceInDays <= 1) {
+  const timeDifferenceInDays = Math.round((period2Date.getTime() - period1Date.getTime()) / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
+  if (timeDifferenceInDays <= 1) {
     interval = "1m"; // 1 minute interval for very short periods
   }
   else if (timeDifferenceInDays > 1 && timeDifferenceInDays <= 3) {
@@ -22,27 +22,21 @@ function defineBestInterval(period1: string, period2: string): ValidInterval {
     interval = "60m"; // 60 minute interval for periods up to a month
   }
   // in all other cases, we will use daily interval
-    
+
   return interval as ValidInterval;
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: LoaderArgs) {
   let url = new URL(request.url);
   let query = url.searchParams.get("q");
-  let period1 =
-    url.searchParams.get("period1") ||
-    new Date(
-      new Date().setFullYear(new Date().getFullYear() - 5)
-    ).getTime().toString(); // Default to 5 years ago if period1 is not provided;
+  let period1 = url.searchParams.get("period1") || new Date().setFullYear(new Date().getFullYear() - 5); // Default to 5 years ago if period1 is not provided;
   let period2 = url.searchParams.get("period2") || new Date().getTime().toString(); // Default to now if period2 is not provided
-  
 
   if (!query) {
     return { error: "No query provided" };
   }
 
   try {
-   
     const assetData = await getAllAssetBySymbolOrderedDesc(query);
 
     // fetch the most recent asset data from DB
@@ -54,24 +48,27 @@ export async function loader({ request }: Route.LoaderArgs) {
       assetData && assetData.length > 0 ? assetData[0] : null;
     if (mostRecentAsset) {
       // there is already some chart data in the database. Get the most recent entry
-      const lastUpdated = new Date(mostRecentAsset.lastUpdated);
+      console.log(`Most recent asset found: ${mostRecentAsset.symbol}, last updated: ${mostRecentAsset.lastUpdated}`);
+      // the lastUpdate field is saved as a string, but is in milliseconds, so we can parse it as an integer
+      const lastUpdated = new Date(parseInt(mostRecentAsset.lastUpdated));
       if (!url.searchParams.get("period1")) {
         // if period1 is not provided, we will use the last updated date to fetch new data since last update
+        console.log(`Using last updated date from the most recent asset: ${lastUpdated}`);
         period1 = lastUpdated.getTime().toString();
       }
     }
     const period1Date = new Date(typeof period1 === 'string' ? parseInt(period1) : period1);
     const period2Date = new Date(typeof period2 === 'string' ? parseInt(period2) : period2);
     const timeDifferenceMs = period2Date.getTime() - period1Date.getTime();
-    let interval = url.searchParams.get("interval") || defineBestInterval(period1, period2); // choose a good interval based on the period1 and period2 dates
-     console.log(`"Fetching asset chart for query: ${query}
-       period1: ${period1} (${period1Date.toISOString()}),
-       period2: ${period2} (${period2Date.toISOString()}),
+    let interval = url.searchParams.get("interval") || defineBestInterval(period1Date, period2Date); // choose a good interval based on the period1 and period2 dates
+    console.log(`"Fetching asset chart for query: ${query}
+       period1: ${period1} (${period1Date.toLocaleDateString()}),
+       period2: ${period2} (${period2Date.toLocaleDateString()}),
        interval:${interval}`);
     console.log(`Time difference in ms: ${timeDifferenceMs}`);
     let assetMapped: AssetType | undefined;
     try {
-      if (period1Date < period2Date && (timeDifferenceMs/60000) >= 15) {
+      if (period1Date < period2Date && (timeDifferenceMs / 60000) >= 15) {
         //only fetch data if the time difference is at least 15 minutes
         const externalChartData = await getHistoricalData(
           query,
@@ -84,6 +81,24 @@ export async function loader({ request }: Route.LoaderArgs) {
           return { error: "No chart data found for the given query" };
         }
 
+        externalChartData.events?.splits?.forEach((s) => {
+          try{
+              s.date.getTime().toString()
+          } catch (error) {
+            console.error("Error processing split event:", s.date);
+          }
+        });
+
+        externalChartData.events?.dividends?.forEach((s) => {
+          try{
+              s.date.getTime().toString()
+          } catch (error) {
+            console.error("Error processing dividend event:", s.date, typeof s.date);
+          }
+        });
+
+        // console.log("External chart data fetched successfully:", externalChartData);
+        
         assetMapped = {
           id: 1, // this will be auto-generated by the database
           symbol: externalChartData.meta.symbol,
@@ -97,12 +112,12 @@ export async function loader({ request }: Route.LoaderArgs) {
           exchangeTimezoneName: externalChartData.meta.exchangeTimezoneName,
           longName: mostRecentAsset
             ? mostRecentAsset.longName!
-            : externalChartData.meta.symbol || "",
+            : (externalChartData.meta as any).longName || externalChartData.meta.symbol || "",
           shortName: mostRecentAsset
             ? mostRecentAsset.shortName!
-            : externalChartData.meta.symbol || "",
+            : (externalChartData.meta as any).shortName || externalChartData.meta.symbol || "",
           quotes: externalChartData.quotes.map((q) => ({
-            date: q.date.getTime(), // convert to string for consistency.
+            date: q.date.getTime().toString(), // convert to string for consistency.
             high: q.high === null ? undefined : q.high,
             low: q.low === null ? undefined : q.low,
             open: q.open === null ? undefined : q.open,
@@ -113,22 +128,44 @@ export async function loader({ request }: Route.LoaderArgs) {
           events: {
             // Convert dividends and splits to the expected format. Storing the date as a string for consistency.
             dividends: externalChartData.events?.dividends
-              ? externalChartData.events.dividends.map((d) => ({
-                  amount: d.amount,
-                  date: d.date.getTime().toString() // convert to string for consistency
-                }))
+              ? externalChartData.events.dividends.map((d) => {
+                  console.log('Processing dividend:', d.date, typeof d.date, d.amount);
+                  let timestampMs: number;
+                  if (typeof d.date === 'number') {
+                    // Yahoo Finance returns Unix timestamp in seconds, convert to milliseconds
+                    timestampMs = d.date < 10000000000 ? d.date * 1000 : d.date;
+                  } else {
+                    // Date object, get milliseconds
+                    timestampMs = d.date.getTime();
+                  }
+                  console.log('Converted dividend timestamp:', timestampMs, new Date(timestampMs).toISOString());
+                  return {
+                    amount: d.amount,
+                    date: timestampMs.toString(),
+                  };
+                })
               : [],
             splits: externalChartData.events?.splits
-              ? externalChartData.events.splits.map((s) => ({
-                  date: s.date.getTime().toString(), // convert to string for consistency
-                  numerator: s.numerator,
-                  denominator: s.denominator,
-                  splitRatio: s.splitRatio,
-                }))
+              ? externalChartData.events.splits.map((s) => {
+                  let timestampMs: number;
+                  if (typeof s.date === 'number') {
+                    // Yahoo Finance returns Unix timestamp in seconds, convert to milliseconds
+                    timestampMs = s.date < 10000000000 ? s.date * 1000 : s.date;
+                  } else {
+                    // Date object, get milliseconds
+                    timestampMs = s.date.getTime();
+                  }
+                  return {
+                    date: timestampMs.toString(),
+                    numerator: s.numerator,
+                    denominator: s.denominator,
+                    splitRatio: s.splitRatio,
+                  };
+                })
               : [],
           },
           isFromApi: true, // since this data is fetched from an external API
-          lastUpdated: new Date().toString(),
+          lastUpdated: new Date().getTime().toString(),
         };
         const res = await createAsset(assetMapped);
         if (!res || res[0].id === undefined) {
@@ -137,7 +174,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       } else {
         // No need to fetch new data, use the most recent asset data
         console.log(
-          `Using existing asset data for ${query} from last updated date: ${mostRecentAsset ? mostRecentAsset.lastUpdated: "N/A"}`
+          `Using existing asset data for ${query} from last updated date: ${mostRecentAsset ? mostRecentAsset.lastUpdated : "N/A"}`
         );
       }
       // combine the new asset with the existing chart data
@@ -163,8 +200,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       });
 
       // Create the combined asset data
+      // Use mostRecentAsset as fallback if assetMapped is undefined
+      const baseAsset = assetMapped || mostRecentAsset;
+      if (!baseAsset) {
+        return { error: "No asset data available" };
+      }
+
       const combinedAssetData = {
-        ...assetMapped,
+        ...baseAsset,
         quotes: combinedQuotes,
         events: {
           dividends:

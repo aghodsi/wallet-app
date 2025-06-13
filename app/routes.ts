@@ -8,4 +8,5 @@ export default [
     route("/portfolio", "routes/portfolio.tsx"),
     route("/searchSymbol", "routes/searchSymbol.tsx"),
     route("/fetchAssetChart", "routes/fetchAssetChart.tsx"),
+    route("/calendar-test", "routes/calendar-test.tsx"),
 ] satisfies RouteConfig;
