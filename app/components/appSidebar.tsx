@@ -49,7 +49,7 @@ const data = {
     },
     {
       name: "Transaction",
-      url: "#",
+      url: "/transactions",
       icon: ArrowRightLeft,
       needsPortfolio: true,
     },

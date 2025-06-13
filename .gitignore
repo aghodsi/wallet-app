@@ -11,3 +11,6 @@ __azurite_db_blob__.json
 __azurite_db_blob_extent__.json
 APPL.json
 search.json
+splunk_queries.json
+AAPL
+.gitignore

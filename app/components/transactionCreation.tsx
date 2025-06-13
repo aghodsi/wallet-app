@@ -28,6 +28,7 @@ import { Input as InputWithIcon } from "./ui/input-with-icon";
 import { useQuery } from "@tanstack/react-query";
 import { Toaster } from "./ui/sonner";
 import { toast } from "sonner";
+import { userPortfolios } from "~/stateManagement/portfolioContext";
 
 type TransactionCreationProps = {
   open: boolean;
@@ -46,13 +47,20 @@ type MultipleSelectorOption = {
 };
 
 export function TransactionCreation(props: TransactionCreationProps) {
-  const [portfolioId, setPortfolioId] = useState(
-    props.selectedPortfolioId || props.portfolios[0]?.id || 0
-  );
-  const [targetPortfolioId, setTargetPortfolioId] = useState(
-    props.selectedPortfolioId || props.portfolios[0]?.id || 0
-  );
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  // Get portfolios from context to find the selected one
+  const contextPortfolios = userPortfolios();
+  
+  // Filter portfolios to exclude those with negative IDs
+  const validPortfolios = props.portfolios.filter((portfolio) => portfolio.id >= 0);
+  
+  // Find the selected portfolio from context, fallback to props or first valid portfolio
+  const selectedPortfolioFromContext = contextPortfolios.find((p: PortfolioType) => p.selected === true);
+  const initialPortfolioId = selectedPortfolioFromContext?.id || props.selectedPortfolioId || validPortfolios[0]?.id || 0;
+  
+  const [portfolioId, setPortfolioId] = useState(initialPortfolioId);
+  const [targetPortfolioId, setTargetPortfolioId] = useState(initialPortfolioId);
+  const [date, setDate] = useState<Date>(new Date());
+  const [time, setTime] = useState("10:30:00");
   const [type, setType] = useState<
     "Buy" | "Sell" | "Dividend" | "Deposit" | "Withdraw"
   >("Buy");
@@ -114,13 +122,18 @@ export function TransactionCreation(props: TransactionCreationProps) {
       return;
     }
 
+    // Combine date and time into epoch timestamp
+    const dateString = date.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    const dateTimeString = `${dateString}T${time}`;
+    const epochTimestamp = new Date(dateTimeString).getTime().toString();
+
     props.onCreate({
       id: getRndInteger(1, 9999),
       portfolioId,
       targetPortfolioId: showDifferentPortfolio
         ? targetPortfolioId
         : portfolioId,
-      date,
+      date: epochTimestamp,
       type,
       asset: { symbol: asset.value, isFetchedFromApi: asset.isFetched },
       quantity,
@@ -156,11 +169,10 @@ export function TransactionCreation(props: TransactionCreationProps) {
       staleTime: 15 * 60 * 1000, // 15 minutes
     });
     // Reset form
-    setPortfolioId(props.selectedPortfolioId || props.portfolios[0]?.id || 0);
-    setTargetPortfolioId(
-      props.selectedPortfolioId || props.portfolios[0]?.id || 0
-    );
-    setDate(new Date().toISOString().split("T")[0]);
+    setPortfolioId(initialPortfolioId);
+    setTargetPortfolioId(initialPortfolioId);
+    setDate(new Date());
+    setTime("10:30:00");
     setType("Buy");
     setAsset({} as Option);
     setQuantity(0);
@@ -194,12 +206,12 @@ export function TransactionCreation(props: TransactionCreationProps) {
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Portfolio">
-                  {props.portfolios.find((p) => p.id === portfolioId)?.name ||
+                  {validPortfolios.find((p) => p.id === portfolioId)?.name ||
                     "Select Portfolio"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {props.portfolios.map((portfolio) => (
+                {validPortfolios.map((portfolio) => (
                   <SelectItem
                     key={portfolio.id}
                     value={portfolio.id.toString()}
@@ -213,8 +225,28 @@ export function TransactionCreation(props: TransactionCreationProps) {
               Please select a portfolio.
             </div>
 
-            <Label htmlFor="date-input">Transaction Date</Label>
-            <DatePicker key="date-input" />
+            <Label htmlFor="date-input">Transaction Date & Time</Label>
+            <div className="flex gap-4">
+              <DatePicker 
+                key="date-input"
+                value={date}
+                onChange={(selectedDate) => {
+                  if (selectedDate) {
+                    setDate(selectedDate);
+                  }
+                }}
+              />
+              <div className="flex flex-col gap-3">
+                <Input
+                  type="time"
+                  id="time"
+                  step="1"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                />
+              </div>
+            </div>
 
             <Label htmlFor="type-select">Transaction Type</Label>
             <Select
@@ -445,13 +477,13 @@ export function TransactionCreation(props: TransactionCreationProps) {
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select Portfolio">
-                            {props.portfolios.find(
+                            {validPortfolios.find(
                               (p) => p.id === targetPortfolioId
                             )?.name || "Select Portfolio"}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {props.portfolios.map((portfolio) => (
+                          {validPortfolios.map((portfolio) => (
                             <SelectItem
                               key={portfolio.id}
                               value={portfolio.id.toString()}

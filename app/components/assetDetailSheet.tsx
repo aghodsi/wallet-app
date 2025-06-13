@@ -150,7 +150,8 @@ export function AssetDetailSheet({
     const sellTransactionMap = new Map<string, { price: number, quantity: number }>()
     
     assetTransactions.forEach(transaction => {
-      const transactionDate = new Date(transaction.date)
+      // Parse transaction date as epoch timestamp
+      const transactionDate = new Date(parseInt(transaction.date))
       if (transactionDate >= startDate && !isNaN(transactionDate.getTime())) {
         const transactionDateKey = transactionDate.toISOString().split('T')[0] // YYYY-MM-DD
         

@@ -405,7 +405,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
                 <li key={transaction.id} className="py-1">
                   {transaction.asset.symbol} - {transaction.quantity} @ $
                   {transaction.price} on{" "}
-                  {new Date(transaction.date).toLocaleDateString()}
+                  {new Date(parseInt(transaction.date)).toLocaleDateString()}
                 </li>
               ))}
             </ul>

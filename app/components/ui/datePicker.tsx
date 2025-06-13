@@ -13,8 +13,18 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover"
 
-export function DatePicker() {
-  const [date, setDate] = React.useState<Date>()
+interface DatePickerProps {
+  value?: Date
+  onChange?: (date: Date | undefined) => void
+  placeholder?: string
+}
+
+export function DatePicker({ value, onChange, placeholder = "Pick a date" }: DatePickerProps) {
+  const [internalDate, setInternalDate] = React.useState<Date>()
+  
+  // Use controlled value if provided, otherwise use internal state
+  const date = value !== undefined ? value : internalDate
+  const setDate = onChange || setInternalDate
 
   return (
     <Popover modal>
@@ -27,7 +37,7 @@ export function DatePicker() {
           )}
         >
           <CalendarIcon />
-          {date ? format(date, "PPP") : <span>Pick a date</span>}
+          {date ? format(date, "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
