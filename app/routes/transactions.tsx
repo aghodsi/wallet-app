@@ -1,7 +1,7 @@
 
 
 import { TransactionsDataTable } from "~/components/transactions/data-table"
-import { columns } from "~/components/transactions/columns"
+import { createColumns } from "~/components/transactions/columns"
 import { Button } from "~/components/ui/button"
 import { Plus } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -34,6 +34,12 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
   
   const portfolios = userPortfolios()
   const selectedPortfolio = portfolios.find(p => p.selected)
+  
+  // Create columns with portfolio data
+  const columns = createColumns({
+    portfolios,
+    selectedPortfolioId: selectedPortfolio?.id
+  })
   
   // Transform and filter the raw transaction data
   const transactions = useMemo(() => {
@@ -183,6 +189,8 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
         onEditTransaction={handleEditTransaction}
         onCloneTransaction={handleCloneTransaction}
         onDeleteTransaction={handleDeleteTransaction}
+        portfolios={portfolios}
+        selectedPortfolioId={selectedPortfolio?.id}
       />
 
       <AssetDetailSheet

@@ -121,17 +121,17 @@ export async function loader({ params }: Route.LoaderArgs) {
       id: -1, // Use a negative ID to indicate this is a special "All" portfolio
       name: "All",
       currency: defaultCurrency[0] ?? {
-        id: 1,
+        id: -1,
         code: "USD",
         name: "US Dollar",
         symbol: "$",
-        exchangeRate: 1,
+        exchangeRate: -1,
         lastUpdated: "0",
       },
       symbol: "GalleryVerticalEnd",
       type: "Investment",
       institution: {
-        id: 1,
+        id: -1,
         name: "All Institutions",
         isDefault: true,
         website: "",

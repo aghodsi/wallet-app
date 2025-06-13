@@ -24,13 +24,6 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { Input } from "~/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select"
-import {
   Table,
   TableBody,
   TableCell,
@@ -38,6 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table"
+import { DataTableFacetedFilter } from "./data-table-faceted-filter"
+import { convertTextToIcon } from "~/lib/iconHelper"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -46,6 +41,8 @@ interface DataTableProps<TData, TValue> {
   onEditTransaction?: (transaction: any) => void
   onCloneTransaction?: (transaction: any) => void
   onDeleteTransaction?: (transactionId: number) => void
+  portfolios?: any[]
+  selectedPortfolioId?: number
 }
 
 // Helper function to convert column IDs to proper display names
@@ -53,6 +50,8 @@ function getColumnDisplayName(columnId: string): string {
   const columnNames: Record<string, string> = {
     "select": "Select",
     "date": "Date",
+    "portfolio": "Portfolio",
+    "institution": "Institution",
     "type": "Type",
     "asset": "Asset",
     "quantity": "Quantity",
@@ -60,9 +59,9 @@ function getColumnDisplayName(columnId: string): string {
     "total": "Total",
     "commision": "Commission",
     "tax": "Tax",
-    "institution": "Institution",
     "tags": "Tags",
     "recurrence": "Recurrence",
+    "notes": "Notes",
     "actions": "Actions"
   }
   
@@ -76,6 +75,8 @@ export function TransactionsDataTable<TData, TValue>({
   onEditTransaction,
   onCloneTransaction,
   onDeleteTransaction,
+  portfolios = [],
+  selectedPortfolioId,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -85,9 +86,22 @@ export function TransactionsDataTable<TData, TValue>({
     React.useState<VisibilityState>({
       tax: false,        // Hide tax column by default
       institution: false, // Hide institution column by default
-      recurrence: false  // Hide recurrence column by default
+      recurrence: false,  // Hide recurrence column by default
+      notes: false       // Hide notes column by default
     })
   const [rowSelection, setRowSelection] = React.useState({})
+
+  // Check if we're showing all portfolios
+  const isShowingAllPortfolios = selectedPortfolioId === -1
+
+  // Get unique institutions from portfolios
+  const uniqueInstitutions = React.useMemo(() => {
+    if (!portfolios) return []
+    const institutions = portfolios
+      .filter(p => p.institution && p.institution.name && p.institution.id >= 0)
+      .map(p => p.institution.name)
+    return Array.from(new Set(institutions))
+  }, [portfolios])
 
   const table = useReactTable({
     data,
@@ -100,6 +114,11 @@ export function TransactionsDataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    filterFns: {
+      arrIncludes: (row, id, value) => {
+        return value.includes(row.getValue(id))
+      },
+    },
     state: {
       sorting,
       columnFilters,
@@ -116,7 +135,7 @@ export function TransactionsDataTable<TData, TValue>({
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex items-center py-4 gap-4 flex-wrap">
         <Input
           placeholder="Filter by asset symbol..."
           value={(table.getColumn("asset")?.getFilterValue() as string) ?? ""}
@@ -125,26 +144,43 @@ export function TransactionsDataTable<TData, TValue>({
           }
           className="max-w-sm"
         />
-        <div className="ml-4">
-          <Select
-            value={(table.getColumn("type")?.getFilterValue() as string) ?? ""}
-            onValueChange={(value) =>
-              table.getColumn("type")?.setFilterValue(value === "all" ? "" : value)
-            }
-          >
-            <SelectTrigger className="max-w-sm">
-              <SelectValue placeholder="Filter by type..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Buy">Buy</SelectItem>
-              <SelectItem value="Sell">Sell</SelectItem>
-              <SelectItem value="Dividend">Dividend</SelectItem>
-              <SelectItem value="Deposit">Deposit</SelectItem>
-              <SelectItem value="Withdraw">Withdraw</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <DataTableFacetedFilter
+          column={table.getColumn("type")}
+          title="Type"
+          options={[
+            { label: "Buy", value: "Buy" },
+            { label: "Sell", value: "Sell" },
+            { label: "Dividend", value: "Dividend" },
+            { label: "Deposit", value: "Deposit" },
+            { label: "Withdraw", value: "Withdraw" },
+          ]}
+        />
+        
+        {isShowingAllPortfolios && (
+          <>
+            <DataTableFacetedFilter
+              column={table.getColumn("portfolio")}
+              title="Portfolio"
+              options={portfolios
+                .filter(portfolio => portfolio.id !== -1)
+                .map(portfolio => ({
+                  label: portfolio.name,
+                  value: portfolio.name,
+                  icon: () => convertTextToIcon(portfolio.symbol, "h-4 w-4"),
+                }))}
+            />
+
+            <DataTableFacetedFilter
+              column={table.getColumn("institution")}
+              title="Institution"
+              options={uniqueInstitutions.map(institution => ({
+                label: institution,
+                value: institution,
+              }))}
+            />
+          </>
+        )}
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">

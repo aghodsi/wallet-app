@@ -3,10 +3,12 @@
 import { type ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, ChartCandlestick, Edit, Trash2, Copy } from "lucide-react"
 import { type TransactionType } from "~/datatypes/transaction"
+import { type PortfolioType } from "~/datatypes/portfolio"
 import { Button } from "~/components/ui/button"
 import { Checkbox } from "~/components/ui/checkbox"
 import { Badge } from "~/components/ui/badge"
 import { cronToNaturalLanguage } from "~/lib/cronUtils"
+import { convertTextToIcon } from "~/lib/iconHelper"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +21,16 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog"
 
-export const columns: ColumnDef<TransactionType>[] = [
+interface ColumnsOptions {
+  portfolios?: PortfolioType[]
+  selectedPortfolioId?: number
+}
+
+export function createColumns(options?: ColumnsOptions): ColumnDef<TransactionType>[] {
+  const { portfolios = [], selectedPortfolioId } = options || {}
+  const isShowingAllPortfolios = selectedPortfolioId === -1
+
+  const columns: ColumnDef<TransactionType>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -63,9 +74,85 @@ export const columns: ColumnDef<TransactionType>[] = [
       return <div className="font-medium">{date.toLocaleDateString()}</div>
     },
   },
+  ...(isShowingAllPortfolios ? [{
+    id: "portfolio",
+    header: ({ column }: { column: any }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Portfolio
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
+    cell: ({ row }: { row: any }) => {
+      const transaction = row.original
+      const portfolio = portfolios.find(p => p.id === transaction.portfolioId)
+      
+      if (!portfolio) {
+        return <div className="text-sm text-muted-foreground">Unknown Portfolio</div>
+      }
+      
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            {convertTextToIcon(portfolio.symbol, "h-4 w-4")}
+            <span className="font-medium">{portfolio.name}</span>
+          </div>
+          {portfolio.institution && (
+            <Badge variant="outline" className="text-xs w-fit">
+              {portfolio.institution.name}
+            </Badge>
+          )}
+        </div>
+      )
+    },
+    accessorFn: (row: TransactionType) => {
+      const portfolio = portfolios.find(p => p.id === row.portfolioId)
+      return portfolio?.name || "Unknown Portfolio"
+    },
+    filterFn: (row: any, id: string, value: any) => {
+      return value.includes(row.getValue(id))
+    },
+    enableHiding: true,
+  }] : []),
+  ...(isShowingAllPortfolios ? [{
+    id: "institution",
+    header: "Institution",
+    cell: ({ row }: { row: any }) => {
+      const transaction = row.original
+      const portfolio = portfolios.find(p => p.id === transaction.portfolioId)
+      
+      if (!portfolio || !portfolio.institution) {
+        return <div className="text-sm text-muted-foreground">-</div>
+      }
+      
+      return <div className="text-sm">{portfolio.institution.name}</div>
+    },
+    accessorFn: (row: TransactionType) => {
+      const portfolio = portfolios.find(p => p.id === row.portfolioId)
+      return portfolio?.institution?.name || ""
+    },
+    filterFn: (row: any, id: string, value: any) => {
+      return value.includes(row.getValue(id))
+    },
+    enableHiding: true,
+  }] : []),
   {
     accessorKey: "type",
-    header: "Type",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Type
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const type = row.getValue("type") as string
       const typeColors = {
@@ -80,6 +167,9 @@ export const columns: ColumnDef<TransactionType>[] = [
           {type}
         </Badge>
       )
+    },
+    filterFn: (row: any, id: string, value: any) => {
+      return value.includes(row.getValue(id))
     },
   },
   {
@@ -120,7 +210,17 @@ export const columns: ColumnDef<TransactionType>[] = [
   },
   {
     accessorKey: "quantity",
-    header: "Quantity",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Quantity
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const quantity = parseFloat(row.getValue("quantity"))
       return <div className="font-medium">{quantity.toFixed(2)}</div>
@@ -128,7 +228,17 @@ export const columns: ColumnDef<TransactionType>[] = [
   },
   {
     accessorKey: "price",
-    header: "Price",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Price
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const price = parseFloat(row.getValue("price"))
       const formatted = new Intl.NumberFormat("en-US", {
@@ -140,7 +250,17 @@ export const columns: ColumnDef<TransactionType>[] = [
   },
   {
     id: "total",
-    header: "Total",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Total
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const quantity = parseFloat(row.getValue("quantity"))
       const price = parseFloat(row.getValue("price"))
@@ -151,10 +271,25 @@ export const columns: ColumnDef<TransactionType>[] = [
       }).format(total)
       return <div className="font-medium">{formatted}</div>
     },
+    accessorFn: (row) => {
+      const quantity = parseFloat(row.quantity.toString())
+      const price = parseFloat(row.price.toString())
+      return quantity * price
+    },
   },
   {
     accessorKey: "commision",
-    header: "Commission",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Commission
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const commission = parseFloat(row.getValue("commision"))
       const formatted = new Intl.NumberFormat("en-US", {
@@ -174,16 +309,6 @@ export const columns: ColumnDef<TransactionType>[] = [
         currency: "USD",
       }).format(tax)
       return <div className="text-sm text-muted-foreground">{formatted}</div>
-    },
-    enableHiding: true,
-  },
-  {
-    id: "institution",
-    header: "Institution",
-    cell: ({ row }) => {
-      // For now, we'll show a placeholder since we don't have institution data in the transaction
-      // This would need to be populated by joining with portfolio and institution data
-      return <div className="text-sm text-muted-foreground">Institution Name</div>
     },
     enableHiding: true,
   },
@@ -217,6 +342,20 @@ export const columns: ColumnDef<TransactionType>[] = [
         <div className="text-sm">
           <div className="font-medium">{naturalLanguage}</div>
           <div className="text-xs text-muted-foreground font-mono">{recurrence}</div>
+        </div>
+      )
+    },
+    enableHiding: true,
+  },
+  {
+    accessorKey: "notes",
+    header: "Notes",
+    cell: ({ row }) => {
+      const notes = row.getValue("notes") as string
+      if (!notes) return <div className="text-sm text-muted-foreground">-</div>
+      return (
+        <div className="text-sm max-w-[200px] truncate" title={notes}>
+          {notes}
         </div>
       )
     },
@@ -287,4 +426,10 @@ export const columns: ColumnDef<TransactionType>[] = [
       )
     },
   },
-]
+  ]
+
+  return columns
+}
+
+// Default columns for backward compatibility
+export const columns = createColumns()
