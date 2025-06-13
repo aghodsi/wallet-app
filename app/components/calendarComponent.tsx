@@ -38,7 +38,9 @@ function CustomDayButton({
   
   // Find transactions for this day
   const dayTransactions = transactions.filter(transaction => {
-    const transactionDate = new Date(transaction.date).toISOString().split('T')[0]
+    // Parse epoch timestamp - handle both string and number formats
+    const timestamp = typeof transaction.date === 'string' ? parseInt(transaction.date) : transaction.date
+    const transactionDate = new Date(timestamp).toISOString().split('T')[0]
     return transactionDate === dayDate
   })
   

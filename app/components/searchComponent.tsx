@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import {
-  Calculator,
-  Calendar,
-  CreditCard,
-  Settings,
-  Smile,
-  User,
+  Plus,
+  Wallet,
+  TrendingUp,
+  Coins,
+  ArrowUpDown,
 } from "lucide-react";
 
 import {
@@ -18,16 +17,62 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "~/components/ui/command";
 import { useEffect, useState } from "react";
 import { useIsMac } from "~/hooks/useIsMac";
-import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { userPortfolios } from "~/stateManagement/portfolioContext";
+import { useTransactions } from "~/hooks/useTransactions";
+import { useNavigate } from "react-router";
 
 export function SearchComponent() {
   const [open, setOpen] = useState(false);
   const isMac = useIsMac();
+  const navigate = useNavigate();
+  const portfolios = userPortfolios();
+  
+  // Use useTransactions hook with portfolioId -1 to get all transactions
+  const { data: transactions, isLoading: isTransactionsLoading } = useTransactions(-1);
+
+  // Extract unique assets from transactions
+  const assets = React.useMemo(() => {
+    if (!transactions) return [];
+    const uniqueAssets = new Set<string>();
+    transactions.forEach(transaction => {
+      // Handle both string and object asset formats
+      const assetSymbol = typeof transaction.asset === 'string' 
+        ? transaction.asset 
+        : transaction.asset?.symbol;
+      if (assetSymbol) {
+        uniqueAssets.add(assetSymbol);
+      }
+    });
+    return Array.from(uniqueAssets);
+  }, [transactions]);
+
+  const handleAction = (action: string) => {
+    setOpen(false);
+    switch (action) {
+      case 'create-portfolio':
+        navigate('/createPortfolio');
+        break;
+      case 'create-transaction':
+        navigate('/createTransaction');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handlePortfolioSelect = (portfolioId: number) => {
+    setOpen(false);
+    navigate(`/portfolio?id=${portfolioId}`);
+  };
+
+  const handleTransactionSelect = (transactionId: number) => {
+    setOpen(false);
+    navigate(`/transactions?id=${transactionId}`);
+  };
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -57,40 +102,90 @@ export function SearchComponent() {
         </div>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Type a command or search assets..." />
+        <CommandInput placeholder="Search portfolios, transactions, assets..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading="Suggestions">
-            <CommandItem>
-              <Calendar />
-              <span>Calendar</span>
+          
+          {/* Actions Section */}
+          <CommandGroup heading="Actions">
+            <CommandItem onSelect={() => handleAction('create-portfolio')}>
+              <Plus className="mr-2 h-4 w-4" />
+              <span>Create Portfolio</span>
             </CommandItem>
-            <CommandItem>
-              <Smile />
-              <span>Search Emoji</span>
-            </CommandItem>
-            <CommandItem>
-              <Calculator />
-              <span>Calculator</span>
+            <CommandItem onSelect={() => handleAction('create-transaction')}>
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              <span>Create Transaction</span>
             </CommandItem>
           </CommandGroup>
+
           <CommandSeparator />
-          <CommandGroup heading="Settings">
-            <CommandItem>
-              <User />
-              <span>Profile</span>
-              <CommandShortcut>⌘P</CommandShortcut>
-            </CommandItem>
-            <CommandItem>
-              <CreditCard />
-              <span>Billing</span>
-              <CommandShortcut>⌘B</CommandShortcut>
-            </CommandItem>
-            <CommandItem>
-              <Settings />
-              <span>Settings</span>
-              <CommandShortcut>⌘S</CommandShortcut>
-            </CommandItem>
+
+          {/* Portfolios Section */}
+          <CommandGroup heading="Portfolios">
+            {portfolios.length > 0 ? (
+              portfolios.map((portfolio) => (
+                <CommandItem 
+                  key={portfolio.id} 
+                  onSelect={() => handlePortfolioSelect(portfolio.id)}
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  <span>{portfolio.name}</span>
+                  <div className="ml-auto text-xs text-muted-foreground">
+                    {portfolio.currency.code}
+                  </div>
+                </CommandItem>
+              ))
+            ) : (
+              <CommandItem disabled>
+                <span className="text-muted-foreground">No portfolios found</span>
+              </CommandItem>
+            )}
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          {/* Transactions Section */}
+          <CommandGroup heading="Transactions">
+            {isTransactionsLoading ? (
+              <CommandItem disabled>
+                <span className="text-muted-foreground">Loading transactions...</span>
+              </CommandItem>
+            ) : transactions && transactions.length > 0 ? (
+              transactions.slice(0, 10).map((transaction) => (
+                <CommandItem 
+                  key={transaction.id} 
+                  onSelect={() => handleTransactionSelect(transaction.id)}
+                >
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  <span>{transaction.type} {typeof transaction.asset === 'string' ? transaction.asset : transaction.asset?.symbol}</span>
+                  <div className="ml-auto text-xs text-muted-foreground">
+                    {new Date(parseInt(transaction.date)).toLocaleDateString()}
+                  </div>
+                </CommandItem>
+              ))
+            ) : (
+              <CommandItem disabled>
+                <span className="text-muted-foreground">No transactions found</span>
+              </CommandItem>
+            )}
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          {/* Assets Section */}
+          <CommandGroup heading="Assets">
+            {assets.length > 0 ? (
+              assets.map((asset) => (
+                <CommandItem key={asset}>
+                  <Coins className="mr-2 h-4 w-4" />
+                  <span>{asset}</span>
+                </CommandItem>
+              ))
+            ) : (
+              <CommandItem disabled>
+                <span className="text-muted-foreground">No assets found</span>
+              </CommandItem>
+            )}
           </CommandGroup>
         </CommandList>
       </CommandDialog>

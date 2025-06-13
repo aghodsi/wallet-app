@@ -43,6 +43,9 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onAssetClick?: (symbol: string) => void
+  onEditTransaction?: (transaction: any) => void
+  onCloneTransaction?: (transaction: any) => void
+  onDeleteTransaction?: (transactionId: number) => void
 }
 
 // Helper function to convert column IDs to proper display names
@@ -70,6 +73,9 @@ export function TransactionsDataTable<TData, TValue>({
   columns,
   data,
   onAssetClick,
+  onEditTransaction,
+  onCloneTransaction,
+  onDeleteTransaction,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -102,6 +108,9 @@ export function TransactionsDataTable<TData, TValue>({
     },
     meta: {
       onAssetClick,
+      onEditTransaction,
+      onCloneTransaction,
+      onDeleteTransaction,
     },
   })
 

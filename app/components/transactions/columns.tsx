@@ -7,6 +7,17 @@ import { Button } from "~/components/ui/button"
 import { Checkbox } from "~/components/ui/checkbox"
 import { Badge } from "~/components/ui/badge"
 import { cronToNaturalLanguage } from "~/lib/cronUtils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog"
 
 export const columns: ColumnDef<TransactionType>[] = [
   {
@@ -45,7 +56,10 @@ export const columns: ColumnDef<TransactionType>[] = [
       )
     },
     cell: ({ row }) => {
-      const date = new Date(row.getValue("date"))
+      const dateValue = row.getValue("date") as string
+      // Parse epoch timestamp - if it's a string, convert to number first
+      const timestamp = typeof dateValue === 'string' ? parseInt(dateValue) : dateValue
+      const date = new Date(timestamp)
       return <div className="font-medium">{date.toLocaleDateString()}</div>
     },
   },
@@ -212,8 +226,11 @@ export const columns: ColumnDef<TransactionType>[] = [
     id: "actions",
     header: "Actions",
     enableHiding: false,
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const transaction = row.original
+      const onEditTransaction = (table.options.meta as any)?.onEditTransaction
+      const onCloneTransaction = (table.options.meta as any)?.onCloneTransaction
+      const onDeleteTransaction = (table.options.meta as any)?.onDeleteTransaction
 
       return (
         <div className="flex items-center gap-1">
@@ -221,10 +238,7 @@ export const columns: ColumnDef<TransactionType>[] = [
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
-            onClick={() => {
-              // TODO: Implement edit functionality
-              console.log("Edit transaction:", transaction.id)
-            }}
+            onClick={() => onEditTransaction?.(transaction)}
             title="Edit transaction"
           >
             <Edit className="h-4 w-4" />
@@ -233,26 +247,42 @@ export const columns: ColumnDef<TransactionType>[] = [
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
-            onClick={() => {
-              // TODO: Implement duplicate functionality
-              console.log("Duplicate transaction:", transaction.id)
-            }}
+            onClick={() => onCloneTransaction?.(transaction)}
             title="Duplicate transaction"
           >
             <Copy className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            onClick={() => {
-              // TODO: Implement delete functionality
-              console.log("Delete transaction:", transaction.id)
-            }}
-            title="Delete transaction"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                title="Delete transaction"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the transaction
+                  for {transaction.asset.symbol} on {new Date(parseInt(transaction.date)).toLocaleDateString()}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => onDeleteTransaction?.(transaction.id)}
+                >
+                  Delete Transaction
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )
     },

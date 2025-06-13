@@ -299,3 +299,59 @@ export async function createTransaction(
     );
   }
 }
+
+export async function updateTransaction(
+  transactionId: number,
+  transaction: Partial<TransactionType>
+): Promise<void> {
+  try {
+    console.log("Updating transaction:", transactionId, transaction);
+
+    const updateData: any = {};
+    
+    if (transaction.portfolioId !== undefined) updateData.portfolioId = transaction.portfolioId;
+    if (transaction.date !== undefined) updateData.date = transaction.date;
+    if (transaction.type !== undefined) updateData.type = transaction.type;
+    if (transaction.asset !== undefined) updateData.asset = transaction.asset.symbol;
+    if (transaction.quantity !== undefined) updateData.quantity = transaction.quantity;
+    if (transaction.price !== undefined) updateData.price = transaction.price;
+    if (transaction.commision !== undefined) updateData.commision = transaction.commision;
+    if (transaction.recurrence !== undefined) updateData.recurrence = transaction.recurrence || "";
+    if (transaction.tax !== undefined) updateData.tax = transaction.tax;
+    if (transaction.tags !== undefined) updateData.tags = transaction.tags || "";
+    if (transaction.notes !== undefined) updateData.notes = transaction.notes || "";
+
+    await db
+      .update(transactionTable)
+      .set(updateData)
+      .where(eq(transactionTable.id, transactionId));
+
+    console.log("Transaction updated successfully");
+  } catch (error) {
+    console.error("Error updating transaction:", error);
+    throw new Error(
+      `Failed to update transaction: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function deleteTransaction(transactionId: number): Promise<void> {
+  try {
+    console.log("Deleting transaction:", transactionId);
+
+    await db
+      .delete(transactionTable)
+      .where(eq(transactionTable.id, transactionId));
+
+    console.log("Transaction deleted successfully");
+  } catch (error) {
+    console.error("Error deleting transaction:", error);
+    throw new Error(
+      `Failed to delete transaction: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}

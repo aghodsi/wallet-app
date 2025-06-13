@@ -11,6 +11,7 @@ import { userPortfolios } from "~/stateManagement/portfolioContext"
 import { fetchAllTransactions } from "~/db/actions"
 import { useQueries } from "@tanstack/react-query"
 import { AssetDetailSheet } from "~/components/assetDetailSheet"
+import { TransactionDetailSheet } from "~/components/transactionDetailSheet"
 import type { Route } from "./+types/transactions"
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -27,6 +28,9 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
   const { transactions: rawTransactions, error } = loaderData
   const [selectedAsset, setSelectedAsset] = useState<AssetType | null>(null)
   const [isAssetSheetOpen, setIsAssetSheetOpen] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionType | null>(null)
+  const [isTransactionSheetOpen, setIsTransactionSheetOpen] = useState(false)
+  const [transactionSheetMode, setTransactionSheetMode] = useState<"edit" | "clone" | null>(null)
   
   const portfolios = userPortfolios()
   const selectedPortfolio = portfolios.find(p => p.selected)
@@ -118,6 +122,35 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
     }
   }
 
+  const handleEditTransaction = (transaction: TransactionType) => {
+    setSelectedTransaction(transaction)
+    setTransactionSheetMode("edit")
+    setIsTransactionSheetOpen(true)
+  }
+
+  const handleCloneTransaction = (transaction: TransactionType) => {
+    setSelectedTransaction(transaction)
+    setTransactionSheetMode("clone")
+    setIsTransactionSheetOpen(true)
+  }
+
+  const handleDeleteTransaction = async (transactionId: number) => {
+    try {
+      const response = await fetch(`/api/transactions/${transactionId}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete transaction' }))
+        throw new Error(errorData.error || 'Failed to delete transaction')
+      }
+      // Refresh the page to show updated data
+      window.location.reload()
+    } catch (error) {
+      console.error('Error deleting transaction:', error)
+      alert('Failed to delete transaction: ' + (error as Error).message)
+    }
+  }
+
   if (error) {
     return (
       <main className="pt-16 p-4 container mx-auto">
@@ -147,6 +180,9 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
         columns={columns} 
         data={transactionsWithAssets || []} 
         onAssetClick={handleAssetClick}
+        onEditTransaction={handleEditTransaction}
+        onCloneTransaction={handleCloneTransaction}
+        onDeleteTransaction={handleDeleteTransaction}
       />
 
       <AssetDetailSheet
@@ -154,6 +190,15 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
         onOpenChange={setIsAssetSheetOpen}
         asset={selectedAsset}
         transactions={transactionsWithAssets}
+      />
+
+      <TransactionDetailSheet
+        open={isTransactionSheetOpen}
+        onOpenChange={setIsTransactionSheetOpen}
+        transaction={selectedTransaction}
+        mode={transactionSheetMode}
+        portfolios={portfolios}
+        currencies={[]} // You'll need to fetch currencies if needed
       />
     </main>
   )

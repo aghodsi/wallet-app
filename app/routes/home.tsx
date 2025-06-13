@@ -113,8 +113,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           const formData = new FormData();
           formData.append("transaction", JSON.stringify(t));
           fetcher.submit(formData, {
-            method: "post",
-            action: "/createTransaction",
+            method: "POST",
+            action: "/api/transactions",
           });
         }}
         portfolios={portfolios}
