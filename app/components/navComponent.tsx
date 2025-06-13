@@ -28,12 +28,24 @@ export function NavComponent(props: NavComponentProps) {
         {props.items.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
-              <a href={item.url}
-                className={item.needsPortfolio && portfolios.length==0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
-                tabIndex={item.needsPortfolio && portfolios.length==0  ? -1 : undefined}>
-                {item.icon && <item.icon />}
-                <span>{item.name}</span>
-              </a>
+              {item.onClick ? (
+                <button 
+                  onClick={item.onClick}
+                  className={item.needsPortfolio && portfolios.length==0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
+                  tabIndex={item.needsPortfolio && portfolios.length==0  ? -1 : undefined}
+                  disabled={item.needsPortfolio && portfolios.length==0}
+                >
+                  {item.icon && <item.icon />}
+                  <span>{item.name}</span>
+                </button>
+              ) : (
+                <a href={item.url}
+                  className={item.needsPortfolio && portfolios.length==0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
+                  tabIndex={item.needsPortfolio && portfolios.length==0  ? -1 : undefined}>
+                  {item.icon && <item.icon />}
+                  <span>{item.name}</span>
+                </a>
+              )}
             </SidebarMenuButton>
             {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>

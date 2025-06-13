@@ -19,9 +19,11 @@ import {
   fetchDefaultCurrency,
   fetchInstitutionByIds,
   fetchPortfolios,
+  fetchCurrencies,
 } from "./db/actions";
 import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
+import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
 import type { PortfolioType } from "./datatypes/portfolio";
 
 export const links: Route.LinksFunction = () => [
@@ -72,6 +74,13 @@ export async function loader({ params }: Route.LoaderArgs) {
   const institutions = await queryClient.fetchQuery({
     queryKey: ["institutions", institutionIds],
     queryFn: () => fetchInstitutionByIds(institutionIds),
+  });
+
+  // Fetch all currencies for transaction creation
+  const allCurrencies = await queryClient.fetchQuery({
+    queryKey: ["allCurrencies"],
+    queryFn: fetchCurrencies,
+    staleTime: 30 * 60 * 1000, // 30 minutes
   });
 
   const portFoliosMapped = pf_from_db.map(
@@ -146,18 +155,28 @@ export async function loader({ params }: Route.LoaderArgs) {
       createdAt: "0",
     });
   }
-  return { portFoliosMapped };
+  // Transform allCurrencies to match CurrencyType interface
+  const transformedCurrencies = allCurrencies.map(currency => ({
+    ...currency,
+    exchangeRate: currency.exchangeRate || 1,
+    isDefault: Boolean(currency.isDefault)
+  }));
+
+  return { portFoliosMapped, allCurrencies: transformedCurrencies };
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const portfolios = loaderData.portFoliosMapped;
+  const currencies = loaderData.allCurrencies;
   return (
     <>
       <QueryClientProvider client={queryClient}>
         <PortfolioProvider initialPortfolios={portfolios}>
-          <SidebarLayout>
-            <Outlet />
-          </SidebarLayout>
+          <TransactionDialogProvider currencies={currencies}>
+            <SidebarLayout>
+              <Outlet />
+            </SidebarLayout>
+          </TransactionDialogProvider>
         </PortfolioProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>

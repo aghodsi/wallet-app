@@ -24,11 +24,13 @@ import { Button } from "./ui/button";
 import { userPortfolios } from "~/stateManagement/portfolioContext";
 import { useTransactions } from "~/hooks/useTransactions";
 import { useNavigate } from "react-router";
+import { useTransactionDialog } from "~/contexts/transactionDialogContext";
 
 export function SearchComponent() {
   const [open, setOpen] = useState(false);
   const isMac = useIsMac();
   const navigate = useNavigate();
+  const { openDialog } = useTransactionDialog();
   const portfolios = userPortfolios();
   
   // Use useTransactions hook with portfolioId -1 to get all transactions
@@ -57,7 +59,7 @@ export function SearchComponent() {
         navigate('/createPortfolio');
         break;
       case 'create-transaction':
-        navigate('/createTransaction');
+        openDialog();
         break;
       default:
         break;

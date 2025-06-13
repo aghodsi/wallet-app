@@ -5,6 +5,7 @@ import {
   SidebarTrigger,
 } from "~/components/ui/sidebar"
 import { SearchComponent } from "./searchComponent"
+import { GlobalTransactionDialog } from "./globalTransactionDialog"
 
 export default function SidebarLayout({children} : {children: React.ReactNode}) {
   return (
@@ -24,6 +25,7 @@ export default function SidebarLayout({children} : {children: React.ReactNode}) 
           {children}
         </div>
       </SidebarInset>
+      <GlobalTransactionDialog />
     </SidebarProvider>
   )
 }

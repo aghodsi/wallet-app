@@ -12,6 +12,7 @@ import { fetchAllTransactions } from "~/db/actions"
 import { useQueries } from "@tanstack/react-query"
 import { AssetDetailSheet } from "~/components/assetDetailSheet"
 import { TransactionDetailSheet } from "~/components/transactionDetailSheet"
+import { useTransactionDialog } from "~/contexts/transactionDialogContext"
 import type { Route } from "./+types/transactions"
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -34,6 +35,7 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
   
   const portfolios = userPortfolios()
   const selectedPortfolio = portfolios.find(p => p.selected)
+  const { openDialog, currencies } = useTransactionDialog()
   
   // Create columns with portfolio data
   const columns = createColumns({
@@ -176,7 +178,7 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
             Manage and view all your portfolio transactions
           </p>
         </div>
-        <Button onClick={() => window.location.href = '/createTransaction'}>
+        <Button onClick={() => openDialog()}>
           <Plus className="mr-2 h-4 w-4" />
           Add Transaction
         </Button>
@@ -206,8 +208,9 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
         transaction={selectedTransaction}
         mode={transactionSheetMode}
         portfolios={portfolios}
-        currencies={[]} // You'll need to fetch currencies if needed
+        currencies={currencies}
       />
+
     </main>
   )
 }
