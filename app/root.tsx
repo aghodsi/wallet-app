@@ -26,6 +26,7 @@ import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
 import type { PortfolioType } from "./datatypes/portfolio";
 import { cronService } from "./services/cronService";
+import { ThemeProvider } from "./components/theme-provider";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -48,6 +49,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const storageKey = 'wallet-ui-theme';
+                const theme = localStorage.getItem(storageKey) || 'system';
+                const root = document.documentElement;
+                
+                root.classList.remove('light', 'dark');
+                
+                if (theme === 'system') {
+                  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  root.classList.add(systemTheme);
+                } else {
+                  root.classList.add(theme);
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
         {children}
@@ -200,13 +221,15 @@ export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <QueryClientProvider client={queryClient}>
-        <PortfolioProvider initialPortfolios={portfolios}>
-          <TransactionDialogProvider currencies={currencies} institutions={institutions}>
-            <SidebarLayout>
-              <Outlet />
-            </SidebarLayout>
-          </TransactionDialogProvider>
-        </PortfolioProvider>
+        <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
+          <PortfolioProvider initialPortfolios={portfolios}>
+            <TransactionDialogProvider currencies={currencies} institutions={institutions}>
+              <SidebarLayout>
+                <Outlet />
+              </SidebarLayout>
+            </TransactionDialogProvider>
+          </PortfolioProvider>
+        </ThemeProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </>

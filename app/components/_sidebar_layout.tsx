@@ -6,6 +6,7 @@ import {
 } from "~/components/ui/sidebar"
 import { SearchComponent } from "./searchComponent"
 import { GlobalTransactionDialog } from "./globalTransactionDialog"
+import { ModeToggle } from "~/components/mode-toggle"
 
 export default function SidebarLayout({children} : {children: React.ReactNode}) {
   return (
@@ -18,7 +19,7 @@ export default function SidebarLayout({children} : {children: React.ReactNode}) 
             <div className="flex-1 flex justify-center max-w-md mx-auto">
               <SearchComponent /> 
             </div>
-            <div className="w-8"></div> {/* Spacer to balance the SidebarTrigger */}
+            <ModeToggle />
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">

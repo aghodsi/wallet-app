@@ -148,8 +148,8 @@ export function PortfolioSettings({
           <CardHeader>
             <CardTitle>Global Settings</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
               <Label htmlFor="global-currency-select">
                 Default Currency for All Portfolios View
               </Label>
@@ -197,8 +197,8 @@ export function PortfolioSettings({
             Settings for: {currentPortfolio?.name || "Unknown Portfolio"}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
             <Label htmlFor="portfolio-name">Portfolio Name</Label>
             <Input
               id="portfolio-name"
@@ -210,7 +210,7 @@ export function PortfolioSettings({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="currency-select">Portfolio Currency</Label>
             <Select
               key="currency-select"
@@ -240,7 +240,7 @@ export function PortfolioSettings({
             </Select>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="portfolio-type-select">Portfolio Type</Label>
             <Select
               key="portfolio-type-select"
@@ -280,7 +280,7 @@ export function PortfolioSettings({
             </div>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="institution-select">Institution</Label>
             <MultipleSelector
               key="institution-select"
@@ -324,7 +324,7 @@ export function PortfolioSettings({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="tags-select">Tags</Label>
             <MultipleSelector
               key="tags-select"

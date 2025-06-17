@@ -93,17 +93,22 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
           <DialogTitle>Create a new portfolio</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4">
-          <Input
-            type="text"
-            placeholder="Portfolio Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-          <Label htmlFor="currency-select">
-            Select the currency for your portfolio
-          </Label>
-          <Select
+          <div className="space-y-2">
+            <Label htmlFor="portfolio-name">Portfolio Name</Label>
+            <Input
+              id="portfolio-name"
+              type="text"
+              placeholder="Portfolio Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="currency-select">
+              Select the currency for your portfolio
+            </Label>
+            <Select
             key="currency-select"
             value={currency.code}
             onValueChange={(value) => {
@@ -129,10 +134,12 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
               ))}
             </SelectContent>
           </Select>
-          <Label htmlFor="portfolio-type-select">
-            Select the type of your portfolio
-          </Label>
-          <Select
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="portfolio-type-select">
+              Select the type of your portfolio
+            </Label>
+            <Select
             key="portfolio-type-select"
             value={type}
             onValueChange={(value) =>
@@ -151,10 +158,11 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
               <SelectItem value="Investment">Investment</SelectItem>
             </SelectContent>
           </Select>
+          </div>
 
           {/* Icon Selection Grid */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Select Icon</label>
+            <Label className="text-sm font-medium">Select Icon</Label>
             <div className="grid grid-cols-6 gap-2 p-3 border rounded-md max-h-32 overflow-y-auto">
               {icons.map((icon) => (
                 <Button
@@ -169,10 +177,12 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
               ))}
             </div>
           </div>
-          <Label htmlFor="institution-select">
-            Select institution which holds your portfolio
-          </Label>
-          <MultipleSelector
+          
+          <div className="space-y-2">
+            <Label htmlFor="institution-select">
+              Select institution which holds your portfolio
+            </Label>
+            <MultipleSelector
             key={"institution-select"}
             placeholder="Select Institution"
             maxSelected={1}
@@ -211,25 +221,29 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
               );
             }}
           />
-          <div id="error" className="text-red-400" hidden>
-            Please select an institution.
+            <div id="error" className="text-red-400" hidden>
+              Please select an institution.
+            </div>
           </div>
-          <Label htmlFor="tags-select">Add Tags for your portfolio</Label>
-          <MultipleSelector
-            key={"tags-select"}
-            placeholder="Select Tags"
-            maxSelected={3}
-            creatable={true}
-            defaultOptions={tags}
-            onChange={(selected) => {
-              setTags(
-                selected.map((option) => ({
-                  value: option.value,
-                  label: option.label,
-                }))
-              );
-            }}
-          />
+          
+          <div className="space-y-2">
+            <Label htmlFor="tags-select">Add Tags for your portfolio</Label>
+            <MultipleSelector
+              key={"tags-select"}
+              placeholder="Select Tags"
+              maxSelected={3}
+              creatable={true}
+              defaultOptions={tags}
+              onChange={(selected) => {
+                setTags(
+                  selected.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))
+                );
+              }}
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button onClick={handleCreate}>Create</Button>
