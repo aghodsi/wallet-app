@@ -492,9 +492,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <CardContent className="space-y-4">
               <div className="h-96 w-full rounded-lg border bg-muted/50">
                 <style>{`
-                  .recharts-treemap-rectangle {
-                    rx: 8px !important;
-                    ry: 8px !important;
+                  .recharts-rectangle {
+                    rx: 16px !important;
+                    ry: 16px !important;
                   }
                 `}</style>
                 <ResponsiveContainer width="100%" height="100%">

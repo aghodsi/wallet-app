@@ -92,138 +92,86 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
   console.log("Selected Portfolio:", selectedPortfolio);
   console.log("Filtered Transactions:", transactions);
 
-  // Generate 10 years of test data with transaction-based performance tracking
-  const chartTestData = useMemo(() => {
-    // Use seeded random for consistent results between server and client
-    const seededRandom = (seed: number) => {
-      const x = Math.sin(seed) * 10000;
-      return x - Math.floor(x);
-    };
-    let seedCounter = 12345; // Fixed seed for consistency
-    
-    const data = [];
+  // Generate chart data from actual transactions
+  const chartData = useMemo(() => {
+    if (!transactions.length) return [];
+
+    // Sort transactions by date
+    const sortedTransactions = transactions
+      .slice()
+      .sort((a, b) => new Date(parseInt(a.date)).getTime() - new Date(parseInt(b.date)).getTime());
+
+    // Create a map of transactions by date
+    const transactionsByDate = new Map<string, TransactionType[]>();
+    sortedTransactions.forEach(transaction => {
+      const dateStr = new Date(parseInt(transaction.date)).toISOString().split('T')[0];
+      if (!transactionsByDate.has(dateStr)) {
+        transactionsByDate.set(dateStr, []);
+      }
+      transactionsByDate.get(dateStr)!.push(transaction);
+    });
+
+    // Get date range
+    const startDate = sortedTransactions.length > 0 
+      ? new Date(parseInt(sortedTransactions[0].date))
+      : new Date();
     const endDate = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 10);
-    
-    // Generate transactions with realistic financial data
-    const transactions = [];
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Create transactions every 2-3 weeks
-    let currentTransactionDay = Math.floor(seededRandom(seedCounter++) * 21) + 7;
-    let portfolioShares = 0;
-    let cumulativeInvestment = 0; // Total money invested (including fees)
-    
-    while (currentTransactionDay < totalDays) {
-      const transactionDate = new Date(startDate);
-      transactionDate.setDate(startDate.getDate() + currentTransactionDay);
-      const dateString = transactionDate.toISOString().split('T')[0];
-      
-      // Generate transaction details
-      const transactionType: "buy" | "sell" = seededRandom(seedCounter++) > 0.3 ? "buy" : "sell"; // 70% buy, 30% sell
-      const baseAmount = seededRandom(seedCounter++) * 4000 + 1000; // $1000-$5000 per transaction
-      const sharePrice = seededRandom(seedCounter++) * 100 + 50; // $50-$150 per share
-      const shares = transactionType === "sell" ? Math.min(portfolioShares * 0.3, baseAmount / sharePrice) : baseAmount / sharePrice;
-      
-      if (transactionType === "sell" && portfolioShares <= 0) {
-        // Skip sell if no shares to sell
-        currentTransactionDay += Math.floor(seededRandom(seedCounter++) * 8) + 14;
-        continue;
-      }
-      
-      const transactionAmount = shares * sharePrice;
-      const commission = seededRandom(seedCounter++) * 15 + 5; // $5-$20 commission
-      const taxRate = transactionType === "sell" ? 0.15 : 0; // 15% capital gains tax on sells
-      const taxes = transactionType === "sell" ? transactionAmount * taxRate : 0;
-      const totalCost = transactionAmount + commission + taxes;
-      
-      // Update portfolio
-      if (transactionType === "buy") {
-        portfolioShares += shares;
-        cumulativeInvestment += totalCost;
-      } else {
-        portfolioShares -= shares;
-        cumulativeInvestment -= (totalCost - taxes - commission); // Subtract net proceeds
-      }
-      
-      transactions.push({
-        date: dateString,
-        type: transactionType,
-        shares: shares,
-        sharePrice: sharePrice,
-        amount: transactionAmount,
-        commission: commission,
-        taxes: taxes,
-        totalCost: totalCost,
-        portfolioShares: portfolioShares,
-        cumulativeInvestment: cumulativeInvestment
-      });
-      
-      currentTransactionDay += Math.floor(seededRandom(seedCounter++) * 8) + 14;
-    }
-    
+
     // Generate daily data points
+    const data = [];
+    let cumulativeInvestment = 0;
+    let portfolioValue = 0;
+
     const currentDate = new Date(startDate);
-    let dailySharePrice = 60; // Starting share price
-    
     while (currentDate <= endDate) {
       const dateString = currentDate.toISOString().split('T')[0];
-      
-      // Simulate daily share price movement
-      const daysSinceStart = Math.ceil((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const progressRatio = daysSinceStart / totalDays;
-      
-      // Create realistic market movements
-      const cycleFrequency = 6;
-      const cyclePhase = (progressRatio * cycleFrequency * 2 * Math.PI);
-      const cyclicalTrend = Math.sin(cyclePhase) * 0.1; // ±10% cyclical movement
-      const longTermGrowth = progressRatio * 0.8; // 80% growth over 10 years
-      const dailyVolatility = (seededRandom(seedCounter++) - 0.5) * 0.04; // ±2% daily volatility
-      
-      const growthFactor = 1 + longTermGrowth + cyclicalTrend + dailyVolatility;
-      dailySharePrice = 60 * growthFactor;
-      
-      // Find transaction for this date
-      const dayTransaction = transactions.find(t => t.date === dateString);
-      let currentPortfolioShares = 0;
-      let currentCumulativeInvestment = 0;
-      
-      // Get portfolio state up to this date
-      for (const trans of transactions) {
-        if (trans.date <= dateString) {
-          currentPortfolioShares = trans.portfolioShares;
-          currentCumulativeInvestment = trans.cumulativeInvestment;
-        } else {
-          break;
+      const dayTransactions = transactionsByDate.get(dateString) || [];
+
+      // Process transactions for this day
+      dayTransactions.forEach(transaction => {
+        const amount = transaction.quantity * transaction.price;
+        const commission = transaction.commision || 0;
+        const tax = transaction.tax || 0;
+        const totalCost = amount + commission + tax;
+
+        if (transaction.type === "Buy" || transaction.type === "Deposit") {
+          cumulativeInvestment += totalCost;
+          portfolioValue += amount; // Exclude fees from portfolio value
+        } else if (transaction.type === "Sell" || transaction.type === "Withdraw") {
+          cumulativeInvestment -= amount; // Reduce by the sale amount
+          portfolioValue -= amount;
         }
+      });
+
+      // For simplicity, assume portfolio grows at a modest rate when no transactions occur
+      // In a real app, you'd fetch current market prices for each asset
+      if (dayTransactions.length === 0 && portfolioValue > 0) {
+        // Apply a small daily growth rate (approximately 7% annual growth)
+        portfolioValue *= 1.0002; // ~7% annual growth rate
       }
-      
-      // Calculate performance and baseline
-      const currentPortfolioValue = currentPortfolioShares * dailySharePrice;
-      const performance = currentPortfolioValue;
-      const baseline = currentCumulativeInvestment; // Total invested with fees/taxes
-      
+
       data.push({
         date: dateString,
-        performance: Math.round(performance * 100) / 100,
-        baseline: Math.round(baseline * 100) / 100,
-        hasTransaction: !!dayTransaction,
-        transactionType: dayTransaction?.type,
-        sharePrice: Math.round(dailySharePrice * 100) / 100,
-        portfolioShares: Math.round(currentPortfolioShares * 100) / 100,
-        transactionAmount: dayTransaction?.amount || 0,
-        commission: dayTransaction?.commission || 0,
-        taxes: dayTransaction?.taxes || 0
+        performance: Math.round(portfolioValue * 100) / 100,
+        baseline: Math.round(cumulativeInvestment * 100) / 100,
+        hasTransaction: dayTransactions.length > 0,
+        transactionType: dayTransactions.length > 0 ? 
+          (dayTransactions[0].type.toLowerCase() === "buy" || dayTransactions[0].type.toLowerCase() === "sell" 
+            ? dayTransactions[0].type.toLowerCase() as "buy" | "sell" 
+            : dayTransactions[0].type.toLowerCase() === "deposit" ? "buy" as const
+            : dayTransactions[0].type.toLowerCase() === "withdraw" ? "sell" as const
+            : undefined) 
+          : undefined,
+        transactionAmount: dayTransactions.reduce((sum, t) => sum + (t.quantity * t.price), 0),
+        commission: dayTransactions.reduce((sum, t) => sum + (t.commision || 0), 0),
+        taxes: dayTransactions.reduce((sum, t) => sum + (t.tax || 0), 0)
       });
-      
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
-    console.log("Generated transactions:", transactions.length);
-    console.log("Total data points with transactions:", data.filter(d => d.hasTransaction).length);
+
     return data;
-  }, []);
+  }, [transactions]);
 
   // Calculate fact values based on timeRange and transactions
   const factValues = useMemo(() => {
@@ -257,7 +205,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
         startDate.setFullYear(now.getFullYear() - 1);
     }
 
-    const filteredData = chartTestData.filter((item) => {
+    const filteredData = chartData.filter((item: any) => {
       const itemDate = new Date(item.date);
       return itemDate >= startDate;
     });
@@ -268,9 +216,9 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
     const currentValue = latestData?.performance || 0;
     
     // Calculate commission and taxes from transactions within the time period
-    const filteredTransactionData = filteredData.filter(d => d.hasTransaction);
-    const totalCommission = filteredTransactionData.reduce((sum, d) => sum + (d.commission || 0), 0);
-    const totalTaxes = filteredTransactionData.reduce((sum, d) => sum + (d.taxes || 0), 0);
+    const filteredTransactionData = filteredData.filter((d: any) => d.hasTransaction);
+    const totalCommission = filteredTransactionData.reduce((sum: number, d: any) => sum + (d.commission || 0), 0);
+    const totalTaxes = filteredTransactionData.reduce((sum: number, d: any) => sum + (d.taxes || 0), 0);
     
     // Transaction count (excluding housekeeping - we don't have real transactions with housekeeping flag, so count all)
     const transactionCount = filteredTransactionData.length;
@@ -286,7 +234,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
       performance: currentValue,
       transactionCount,
     };
-  }, [chartTestData, timeRange]);
+  }, [chartData, timeRange]);
 
   const timeRangeLabels = {
     "1d": "Last 1 day",
@@ -371,7 +319,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
         />
         <div className="px-4 lg:px-6">
           <ChartAreaInteractive 
-            data={chartTestData} 
+            data={chartData} 
             currency="USD" 
             timeRange={timeRange}
           />
@@ -398,7 +346,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
             </div>
           </div>
         </div>
-        {transactions && transactions.length > 0 ? (
+        {/* {transactions && transactions.length > 0 ? (
           <div className="px-4 lg:px-6">
             <h2 className="text-lg font-semibold">Transactions</h2>
             <ul className="list-disc pl-5">
@@ -417,7 +365,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
               No transactions found for this portfolio.
             </h2>
           </div>
-        )}
+        )} */}
         {/* <DataTable data={data} /> */}
       </div>
     </div>
