@@ -3,6 +3,40 @@
  * @param cronExpression - Standard cron expression (5 or 6 fields)
  * @returns Human-readable description of the cron schedule
  */
+/**
+ * Converts recurrence settings to a cron expression
+ * @param period - The recurrence period (Day, Week, Month, Quarter)
+ * @param hour - The hour of the day to run (0-23)
+ * @param minute - Optional minute of the hour (0-59), defaults to 0
+ * @param dayOfWeek - Optional day of week for weekly recurrence (0-6, 0 is Sunday)
+ * @param dayOfMonth - Optional day of month for monthly recurrence (1-31)
+ * @returns A cron expression representing the recurrence pattern
+ */
+export function recurrenceToCron(
+  period: 'Day' | 'Week' | 'Month' | 'Quarter',
+  hour: number,
+  minute: number = 0,
+  dayOfWeek?: number,
+  dayOfMonth?: number
+): string {
+  // Validate inputs
+  hour = Math.max(0, Math.min(23, hour));
+  minute = Math.max(0, Math.min(59, minute));
+  
+  switch (period) {
+    case 'Day':
+      return `${minute} ${hour} * * *`;
+    case 'Week':
+      return `${minute} ${hour} * * ${dayOfWeek || 0}`;
+    case 'Month':
+      return `${minute} ${hour} ${dayOfMonth || 1} * *`;
+    case 'Quarter':
+      return `${minute} ${hour} ${dayOfMonth || 1} */3 *`;
+    default:
+      throw new Error('Invalid recurrence period');
+  }
+}
+
 export function cronToNaturalLanguage(cronExpression: string): string {
   if (!cronExpression || cronExpression.trim() === '') {
     return 'No recurrence';

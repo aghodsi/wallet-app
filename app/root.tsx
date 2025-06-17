@@ -26,6 +26,7 @@ import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
 import type { PortfolioType } from "./datatypes/portfolio";
+import { cronService } from "./services/cronService";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -181,6 +182,14 @@ export async function loader({ params }: Route.LoaderArgs) {
     apiUrl: institution.apiUrl || "",
     lastUpdated: institution.lastUpdated || "0"
   }));
+
+  // Initialize the cron service to schedule recurring transactions
+  try {
+    await cronService.initialize();
+  } catch (error) {
+    console.error('Failed to initialize CronService:', error);
+    // Don't throw error to prevent app from breaking if cron service fails
+  }
 
   return { portFoliosMapped, allCurrencies: transformedCurrencies, allInstitutions: transformedInstitutions };
 }

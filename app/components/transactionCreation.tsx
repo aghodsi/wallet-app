@@ -72,7 +72,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
   const [recurrencePeriod, setRecurrencePeriod] = useState<
     "Day" | "Week" | "Month" | "Quarter"
   >("Month");
-  const [recurrenceHour, setRecurrenceHour] = useState(0);
+  const [recurrenceTime, setRecurrenceTime] = useState("10:00");
   const [tags, setTags] = useState<MultipleSelectorOption[]>([]);
   const [notes, setNotes] = useState("");
   const [currency, setCurrency] = useState(props.currencies[0] || null);
@@ -117,7 +117,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
       document.getElementById("portfolio-error")!.hidden = false;
       return;
     }
-    if (!asset.value.trim()) {
+    if (type !== "Deposit" && type !== "Withdraw" && !asset.value.trim()) {
       document.getElementById("asset-error")!.hidden = false;
       return;
     }
@@ -142,16 +142,19 @@ export function TransactionCreation(props: TransactionCreationProps) {
       tax,
       amount,
       recurrence:
-        showRecurrence && recurrencePeriod && recurrenceHour !== undefined
-          ? `0 ${recurrenceHour} * * ${
-              recurrencePeriod === "Day"
-                ? "*"
-                : recurrencePeriod === "Week"
-                ? "0"
-                : recurrencePeriod === "Month"
-                ? "1"
-                : "1/3"
-            }`
+        showRecurrence && recurrencePeriod && recurrenceTime
+          ? (() => {
+              const [hours, minutes] = recurrenceTime.split(':').map(Number);
+              return `${minutes} ${hours} * * ${
+                recurrencePeriod === "Day"
+                  ? "*"
+                  : recurrencePeriod === "Week"
+                  ? "0"
+                  : recurrencePeriod === "Month"
+                  ? "1"
+                  : "1/3"
+              }`;
+            })()
           : undefined,
       tags: tags.map((tag) => tag.value).join(","),
       notes: notes,
@@ -180,7 +183,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
     setCommission(0);
     setTax(0);
     setRecurrencePeriod("Month");
-    setRecurrenceHour(0);
+    setRecurrenceTime("10:00");
     setTags([]);
     setNotes("");
     setAmount(0);
@@ -560,17 +563,11 @@ export function TransactionCreation(props: TransactionCreationProps) {
                   </Select>
                   <Label>at</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={recurrenceHour}
-                    onChange={(e) =>
-                      setRecurrenceHour(parseInt(e.target.value) || 0)
-                    }
-                    className="w-[80px]"
-                    placeholder="0"
+                    type="time"
+                    value={recurrenceTime}
+                    onChange={(e) => setRecurrenceTime(e.target.value)}
+                    className="w-[120px]"
                   />
-                  <Label>hours</Label>
                 </div>
               </>
             )}

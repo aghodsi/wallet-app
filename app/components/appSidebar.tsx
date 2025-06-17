@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   ArrowRightLeft,
   ChartNoAxesCombined,
+  Clock,
   FolderPlus,
   Plus,
   Settings2,
@@ -70,10 +71,12 @@ const data = {
         url: "#",
         needsPortfolio: false,
       },
-      // {
-      //   title: "Data API Settings",
-      //   url: "#"
-      // }
+      {
+        name: "Recurring",
+        url: "/recurring-transactions",
+        icon: Clock,
+        needsPortfolio: true,
+      }
     ],
   }]
 }

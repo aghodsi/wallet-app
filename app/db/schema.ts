@@ -93,9 +93,9 @@ export const assetTable = mysqlTable('asset', {
 export const cronRuns = mysqlTable('cron_runs', {
   id: int('id').autoincrement().primaryKey(),
   transactionId: int('transaction_id').notNull().references(() => transactionTable.id),
-  runtime: varchar('runtime').notNull(),
-  status: varchar('status').notNull().default('completed'), // 'completed', 'failed', 'pending'
-  createdAt: varchar('created_at').notNull(),
-  errorMessage: varchar('error_message'),
+  runtime: varchar({length:100}).notNull(),
+  status: varchar({length:100}).notNull().default('completed'), // 'completed', 'failed', 'pending'
+  createdAt: varchar('created_at', {length:100}).notNull(),
+  errorMessage: varchar('error_message', {length:100}),
 });
 

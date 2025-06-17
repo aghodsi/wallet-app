@@ -6,14 +6,14 @@ import {
   institutionTable,
   portfolioTable,
   transactionTable,
+  cronRuns,
 } from "./schema";
 import mysql from "mysql2/promise";
-import { eq, inArray, desc } from "drizzle-orm";
+import { eq, inArray, desc, ne, and } from "drizzle-orm";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { PortfolioType } from "~/datatypes/portfolio";
 import type { TransactionType } from "~/datatypes/transaction";
 import type { AssetType } from "~/datatypes/asset";
-import { notEqual } from "assert";
 
 const connection = await mysql.createConnection({
   host: process.env.DATABASE_HOST!,
@@ -227,7 +227,7 @@ export async function createTransaction(
   try {
     console.log("Creating transaction (in DB Actions):", transaction);
 
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Create main transaction
       const mainTransaction = await tx
         .insert(transactionTable)
@@ -235,7 +235,7 @@ export async function createTransaction(
           portfolioId: transaction.portfolioId,
           date: transaction.date,
           type: transaction.type,
-          asset: transaction.asset.symbol,
+          asset: (transaction.type === "Withdraw" || transaction.type === "Deposit") ? "Cash" : transaction.asset.symbol,
           quantity: transaction.quantity,
           price: transaction.price,
           commision: transaction.commision,
@@ -291,6 +291,20 @@ export async function createTransaction(
 
       return result;
     });
+
+    // Schedule the transaction if it has a recurrence pattern
+    if (transaction.recurrence && transaction.recurrence.trim() !== '') {
+      try {
+        // Import cronService here to avoid circular dependency issues
+        const { cronService } = await import('~/services/cronService');
+        await cronService.scheduleIfRecurring(result.mainTransaction.id, transaction.recurrence);
+      } catch (error) {
+        console.error("Failed to schedule recurring transaction:", error);
+        // Don't throw error here to prevent transaction creation from failing
+      }
+    }
+
+    return result;
   } catch (error) {
     console.error("Error creating transaction:", error);
     throw new Error(
@@ -351,6 +365,114 @@ export async function deleteTransaction(transactionId: number): Promise<void> {
     console.error("Error deleting transaction:", error);
     throw new Error(
       `Failed to delete transaction: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function fetchRecurringTransactions(portfolioId?: number) {
+  try {
+    const conditions = [ne(transactionTable.recurrence, "")];
+    
+    if (portfolioId && portfolioId !== -1) {
+      conditions.push(eq(transactionTable.portfolioId, portfolioId));
+    }
+
+    return db
+      .select({
+        id: transactionTable.id,
+        portfolioId: transactionTable.portfolioId,
+        date: transactionTable.date,
+        type: transactionTable.type,
+        asset: transactionTable.asset,
+        quantity: transactionTable.quantity,
+        price: transactionTable.price,
+        commision: transactionTable.commision,
+        recurrence: transactionTable.recurrence,
+        tax: transactionTable.tax,
+        tags: transactionTable.tags,
+        notes: transactionTable.notes,
+        isHouskeeping: transactionTable.isHouskeeping,
+      })
+      .from(transactionTable)
+      .where(conditions.length > 1 ? and(...conditions) : conditions[0]);
+  } catch (error) {
+    console.error("Error fetching recurring transactions:", error);
+    throw new Error(
+      `Failed to fetch recurring transactions: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function fetchCronRunsForTransaction(transactionId: number) {
+  try {
+    return db
+      .select()
+      .from(cronRuns)
+      .where(eq(cronRuns.transactionId, transactionId))
+      .orderBy(desc(cronRuns.createdAt));
+  } catch (error) {
+    console.error("Error fetching cron runs:", error);
+    throw new Error(
+      `Failed to fetch cron runs: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function createRecurringTransaction(transactionId: number) {
+  try {
+    // Get the original transaction
+    const transaction = await db.select().from(transactionTable)
+      .where(eq(transactionTable.id, transactionId))
+      .limit(1);
+
+    if (!transaction || transaction.length === 0) {
+      throw new Error('Transaction not found');
+    }
+
+    // Create a new transaction based on the original
+    const newTransaction = {
+      ...transaction[0],
+      id: undefined, // Let the database generate a new ID
+      recurrence: null, // Only the original transaction should have a recurrence
+      date: new Date().getTime().toString(), // Use current time
+    };
+
+    // Insert the new transaction
+    const result = await db.insert(transactionTable).values(newTransaction).$returningId();
+    return result[0];
+  } catch (error) {
+    console.error("Error creating recurring transaction:", error);
+    throw new Error(
+      `Failed to create recurring transaction: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function logCronRun(
+  transactionId: number,
+  status: 'completed' | 'failed',
+  errorMessage?: string
+) {
+  try {
+    return db.insert(cronRuns).values({
+      transactionId,
+      runtime: new Date().toISOString(),
+      status,
+      createdAt: new Date().toISOString(),
+      errorMessage: errorMessage || null,
+    });
+  } catch (error) {
+    console.error("Error logging cron run:", error);
+    throw new Error(
+      `Failed to log cron run: ${
         error instanceof Error ? error.message : "Unknown error"
       }`
     );
