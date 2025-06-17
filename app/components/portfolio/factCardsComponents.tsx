@@ -1,4 +1,4 @@
-import { TrendingDown, TrendingUp } from "lucide-react"
+import { TrendingDown, TrendingUp, PiggyBank, Banknote, Calendar, Target } from "lucide-react"
 import { LabelList, Pie, PieChart } from "recharts"
 
 import { Badge } from "~/components/ui/badge"
@@ -19,6 +19,7 @@ import {
 } from "~/components/ui/chart"
 import type { TransactionType } from "~/datatypes/transaction"
 import type { AssetType } from "~/datatypes/asset"
+import type { PortfolioType } from "~/datatypes/portfolio"
 import { useMemo } from "react"
 
 interface FactCardsProps {
@@ -26,13 +27,15 @@ interface FactCardsProps {
   assets: AssetType[];
   currency?: string;
   timeRange?: string;
+  selectedPortfolio?: PortfolioType;
 }
 
 export function FactCards({
   transactions,
   assets,
   currency = "USD",
-  timeRange = "All time"
+  timeRange = "All time",
+  selectedPortfolio
 }: FactCardsProps) {
   // Calculate stats from transactions
   const calculatedStats = useMemo(() => {
@@ -234,6 +237,236 @@ export function FactCards({
   const performancePercentage = totalInvestment > 0 ? ((performance - totalInvestment) / totalInvestment * 100) : 0;
   const isPerformancePositive = performancePercentage >= 0;
 
+  // Check if this is a savings portfolio
+  const isSavingsPortfolio = selectedPortfolio?.type === "Saving";
+
+  // Calculate savings-specific metrics
+  const savingsStats = useMemo(() => {
+    if (!isSavingsPortfolio) return null;
+    
+    const deposits = transactions.filter(t => t.type === "Buy" && !t.isHousekeeping);
+    const withdrawals = transactions.filter(t => t.type === "Sell" && !t.isHousekeeping);
+    
+    const totalDeposits = deposits.reduce((sum, t) => sum + (t.quantity * t.price), 0);
+    const totalWithdrawals = withdrawals.reduce((sum, t) => sum + (t.quantity * t.price), 0);
+    const netSavings = totalDeposits - totalWithdrawals;
+    const currentBalance = selectedPortfolio?.cashBalance || totalCash;
+    
+    // Calculate average deposit amount
+    const avgDeposit = deposits.length > 0 ? totalDeposits / deposits.length : 0;
+    
+    // Calculate savings frequency (deposits per month)
+    const firstTransaction = deposits[0];
+    const lastTransaction = deposits[deposits.length - 1];
+    let savingsFrequency = 0;
+    
+    if (firstTransaction && lastTransaction) {
+      const firstDate = new Date(parseInt(firstTransaction.date));
+      const lastDate = new Date(parseInt(lastTransaction.date));
+      const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + (lastDate.getMonth() - firstDate.getMonth());
+      savingsFrequency = monthsDiff > 0 ? deposits.length / monthsDiff : deposits.length;
+    }
+    
+    return {
+      totalDeposits,
+      totalWithdrawals,
+      netSavings,
+      currentBalance,
+      avgDeposit,
+      savingsFrequency
+    };
+  }, [transactions, isSavingsPortfolio, selectedPortfolio, totalCash]);
+
+  if (isSavingsPortfolio && savingsStats) {
+    // Render savings-specific fact cards
+    return (
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Current Balance</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatCurrency(savingsStats.currentBalance)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <PiggyBank className="w-4 h-4" />
+                Savings
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Available funds in your savings account <PiggyBank className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Total balance ready for use or investment
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Total Deposits</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatCurrency(savingsStats.totalDeposits)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <TrendingUp />
+                +{formatCurrency(savingsStats.totalDeposits)}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Money saved {timeRange.toLowerCase()} <TrendingUp className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Total amount deposited into savings
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Total Withdrawals</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatCurrency(savingsStats.totalWithdrawals)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <TrendingDown />
+                -{formatCurrency(savingsStats.totalWithdrawals)}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Money withdrawn {timeRange.toLowerCase()} <TrendingDown className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Total amount withdrawn from savings
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Net Savings</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatCurrency(savingsStats.netSavings)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                {savingsStats.netSavings >= 0 ? <TrendingUp /> : <TrendingDown />}
+                {savingsStats.netSavings >= 0 ? 'Positive' : 'Negative'}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Net change in savings {timeRange.toLowerCase()} {savingsStats.netSavings >= 0 ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
+            </div>
+            <div className="text-muted-foreground">
+              Deposits minus withdrawals
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Average Deposit</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatCurrency(savingsStats.avgDeposit)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <Banknote className="w-4 h-4" />
+                Avg
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Typical deposit amount <Banknote className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Average amount per deposit transaction
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Savings Frequency</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {savingsStats.savingsFrequency.toFixed(1)}/month
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <Calendar className="w-4 h-4" />
+                Regular
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Savings discipline <Calendar className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Average deposits per month
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Savings Goal Progress</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {((savingsStats.currentBalance / 10000) * 100).toFixed(0)}%
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <Target className="w-4 h-4" />
+                Goal: {formatCurrency(10000)}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Progress towards savings goal <Target className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Target: {formatCurrency(10000)} emergency fund
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Transaction Activity</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatNumber(transactionCount)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <TrendingUp />
+                Activity
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Account activity {timeRange.toLowerCase()} <TrendingUp className="size-4" />
+            </div>
+            <div className="text-muted-foreground">Number of savings transactions</div>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // Render investment-specific fact cards (default)
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
       <Card className="@container/card">

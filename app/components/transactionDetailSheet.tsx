@@ -215,6 +215,8 @@ export function TransactionDetailSheet({
         : undefined,
       tags: tags.map((tag) => tag.value).join(","),
       notes: notes,
+      // Set duplicateOf when cloning a transaction
+      duplicateOf: mode === "clone" ? transaction.id : undefined,
     }
 
     const formData = new FormData()

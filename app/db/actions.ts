@@ -244,6 +244,8 @@ export async function createTransaction(
           tags: transaction.tags || "",
           notes: transaction.notes || "",
           isHouskeeping: REGULAR_TRANSACTION,
+          duplicateOf: transaction.duplicateOf || null,
+          recurrenceOf: transaction.recurrenceOf || null,
         })
         .$returningId();
 
@@ -441,6 +443,8 @@ export async function createRecurringTransaction(transactionId: number) {
       id: undefined, // Let the database generate a new ID
       recurrence: null, // Only the original transaction should have a recurrence
       date: new Date().getTime().toString(), // Use current time
+      recurrenceOf: transactionId, // Set reference to the original recurring transaction
+      duplicateOf: null, // This is not a duplicate, it's a recurrence
     };
 
     // Insert the new transaction
@@ -450,6 +454,74 @@ export async function createRecurringTransaction(transactionId: number) {
     console.error("Error creating recurring transaction:", error);
     throw new Error(
       `Failed to create recurring transaction: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function duplicateTransaction(transactionId: number): Promise<{ id: number }> {
+  try {
+    // Get the original transaction
+    const transaction = await db.select().from(transactionTable)
+      .where(eq(transactionTable.id, transactionId))
+      .limit(1);
+
+    if (!transaction || transaction.length === 0) {
+      throw new Error('Transaction not found');
+    }
+
+    // Create a new transaction based on the original
+    const newTransaction = {
+      ...transaction[0],
+      id: undefined, // Let the database generate a new ID
+      recurrence: null, // Duplicates should not inherit recurrence
+      date: new Date().getTime().toString(), // Use current time
+      duplicateOf: transactionId, // Set reference to the original transaction
+      recurrenceOf: null, // This is not a recurrence, it's a duplicate
+    };
+
+    // Insert the new transaction
+    const result = await db.insert(transactionTable).values(newTransaction).$returningId();
+    return result[0];
+  } catch (error) {
+    console.error("Error duplicating transaction:", error);
+    throw new Error(
+      `Failed to duplicate transaction: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function fetchTransactionsByRecurrenceOf(transactionId: number) {
+  try {
+    return db
+      .select()
+      .from(transactionTable)
+      .where(eq(transactionTable.recurrenceOf, transactionId))
+      .orderBy(desc(transactionTable.date));
+  } catch (error) {
+    console.error("Error fetching transactions by recurrenceOf:", error);
+    throw new Error(
+      `Failed to fetch transactions by recurrenceOf: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function fetchTransactionsByDuplicateOf(transactionId: number) {
+  try {
+    return db
+      .select()
+      .from(transactionTable)
+      .where(eq(transactionTable.duplicateOf, transactionId))
+      .orderBy(desc(transactionTable.date));
+  } catch (error) {
+    console.error("Error fetching transactions by duplicateOf:", error);
+    throw new Error(
+      `Failed to fetch transactions by duplicateOf: ${
         error instanceof Error ? error.message : "Unknown error"
       }`
     );

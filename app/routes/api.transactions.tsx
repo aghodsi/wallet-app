@@ -63,8 +63,17 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     try {
       const id = transactionId
-      const body = await request.formData()
-      const transactionData = JSON.parse(body.get("transaction") as string) as Partial<TransactionType>
+      let transactionData: Partial<TransactionType>
+
+      const contentType = request.headers.get("Content-Type")
+      if (contentType && contentType.includes("application/json")) {
+        // Handle JSON data
+        transactionData = await request.json()
+      } else {
+        // Handle form data (legacy support)
+        const body = await request.formData()
+        transactionData = JSON.parse(body.get("transaction") as string) as Partial<TransactionType>
+      }
 
       await updateTransaction(id, transactionData)
 

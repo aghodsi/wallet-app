@@ -30,6 +30,8 @@ export const transactionTable = mysqlTable('transaction', {
     tags: varchar({ length: 500 }).default(''),
     notes: varchar({ length: 500 }).default(''),
     isHouskeeping: int('is_houskeeping').notNull().default(0), // 0 for false, 1 for true
+    duplicateOf: int('duplicate_of'), // reference to original transaction when duplicated
+    recurrenceOf: int('recurrence_of'), // reference to original transaction when created by cron
 });
 
 export const institutionTable = mysqlTable('institution', {
@@ -98,4 +100,3 @@ export const cronRuns = mysqlTable('cron_runs', {
   createdAt: varchar('created_at', {length:100}).notNull(),
   errorMessage: varchar('error_message', {length:100}),
 });
-

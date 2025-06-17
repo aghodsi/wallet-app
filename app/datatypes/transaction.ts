@@ -17,4 +17,6 @@ export type TransactionType = {
   notes?: string;
   isHousekeeping?: boolean; // true for housekeeping transactions, false for regular transactions
   isCreatedByUser?: boolean; // true if created by user, false if imported or automated
+  duplicateOf?: number | null; // reference to original transaction when duplicated
+  recurrenceOf?: number | null; // reference to original transaction when created by cron
 };

@@ -1,13 +1,32 @@
 import { Button } from "~/components/ui/button"
-import { Plus, Clock, Calendar } from "lucide-react"
-import { useMemo } from "react"
+import { Plus, Clock, Calendar, Trash2, Eye, ArrowLeft } from "lucide-react"
+import { useMemo, useState } from "react"
 import { type TransactionType } from "~/datatypes/transaction"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
 import { fetchRecurringTransactions, fetchCronRunsForTransaction } from "~/db/actions"
 import { useTransactionDialog } from "~/contexts/transactionDialogContext"
+import { useAllTransactions } from "~/hooks/useTransactions"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog"
 
 interface CronRun {
   id: number
@@ -52,6 +71,12 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
   const portfolios = userPortfolios()
   const selectedPortfolio = portfolios.find(p => p.selected)
   const { openDialog } = useTransactionDialog()
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<RecurringTransactionWithRuns | null>(null)
+  const [showRelatedDialog, setShowRelatedDialog] = useState(false)
+  
+  // Use TanStack Query to fetch all transactions for filtering
+  const { data: allTransactions, isLoading: isLoadingAllTransactions } = useAllTransactions()
 
   // Transform and filter the raw transaction data
   const transactions = useMemo(() => {
@@ -139,6 +164,56 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
     }
   }
 
+  const handleRemoveRecurrence = async (transactionId: number) => {
+    setIsUpdating(true)
+    try {
+      const response = await fetch(`/api/transactions/${transactionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recurrence: "",
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update transaction')
+      }
+
+      // Reload the page to show updated data
+      window.location.reload()
+    } catch (error) {
+      console.error('Error removing recurrence:', error)
+      alert('Failed to remove recurrence. Please try again.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // Filter related transactions using TanStack Query data
+  const relatedTransactions = useMemo(() => {
+    if (!selectedTransaction || !allTransactions) return []
+    
+    return allTransactions.filter((t: any) => 
+      t.recurrenceOf === selectedTransaction.id
+    )
+  }, [selectedTransaction, allTransactions])
+
+  const handleViewRelatedTransactions = (transaction: RecurringTransactionWithRuns) => {
+    setSelectedTransaction(transaction)
+    setShowRelatedDialog(true)
+  }
+
+  const formatTransactionDate = (dateString: string) => {
+    try {
+      const date = new Date(parseInt(dateString))
+      return date.toLocaleDateString() + " " + date.toLocaleTimeString()
+    } catch {
+      return dateString
+    }
+  }
+
   if (error) {
     return (
       <main className="pt-16 p-4 container mx-auto">
@@ -203,6 +278,7 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
                   <TableHead>Recurrence</TableHead>
                   <TableHead>Last Run</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -237,6 +313,50 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
                     <TableCell>
                       {getStatusBadge(transaction.lastRun)}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewRelatedTransactions(transaction)}
+                          disabled={isUpdating}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={isUpdating}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Recurring Schedule</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove the recurring schedule from this transaction?
+                                <br /><br />
+                                <strong>This will only remove the recurrence pattern, not the transaction itself.</strong>
+                                <br /><br />
+                                The transaction will remain in your records, but it will no longer run automatically on the scheduled intervals.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleRemoveRecurrence(transaction.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Remove Recurrence
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -244,6 +364,90 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
           </CardContent>
         </Card>
       )}
+
+      {/* Related Transactions Dialog */}
+      <Dialog open={showRelatedDialog} onOpenChange={setShowRelatedDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Related Transactions
+              {selectedTransaction && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  for {selectedTransaction.asset.symbol}
+                </span>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              Transactions created automatically from the recurring schedule
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingAllTransactions ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-muted-foreground">Loading related transactions...</div>
+            </div>
+          ) : relatedTransactions.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Related Transactions</h3>
+                <p className="text-muted-foreground">
+                  This recurring transaction hasn't created any automatic transactions yet.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Found {relatedTransactions.length} transaction{relatedTransactions.length !== 1 ? 's' : ''} created from this recurring schedule
+              </div>
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Asset</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Portfolio</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {relatedTransactions.map((transaction: any) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatTransactionDate(transaction.date)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          transaction.type === "Buy" ? "default" :
+                          transaction.type === "Sell" ? "destructive" :
+                          transaction.type === "Dividend" ? "secondary" :
+                          "outline"
+                        }>
+                          {transaction.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {transaction.asset}
+                      </TableCell>
+                      <TableCell>{transaction.quantity}</TableCell>
+                      <TableCell>${transaction.price.toFixed(2)}</TableCell>
+                      <TableCell>${(transaction.quantity * transaction.price).toFixed(2)}</TableCell>
+                      <TableCell>{getPortfolioName(transaction.portfolioId)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

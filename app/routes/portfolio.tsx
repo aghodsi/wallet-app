@@ -367,6 +367,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
           assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
           currency="USD"
           timeRange={timeRangeLabels[timeRange as keyof typeof timeRangeLabels]}
+          selectedPortfolio={selectedPortfolio}
         />
         <div className="px-4 lg:px-6">
           <ChartAreaInteractive 
