@@ -70,7 +70,7 @@ const data = {
     },
     {
       name: "Currency Settings",
-      url: "#",
+      url: "/currency-settings",
       icon: Currency,
       needsPortfolio: false,
     },

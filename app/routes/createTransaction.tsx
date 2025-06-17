@@ -2,6 +2,11 @@ import { createTransaction } from "~/db/actions";
 import type { Route } from "./+types/createTransaction";
 import type { TransactionType } from "~/datatypes/transaction";
 
+export async function loader({ }: Route.LoaderArgs) {
+  // This route does not need to load any data, so we return an empty object
+  return {};
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const transactionData = JSON.parse(formData.get("transaction") as string) as TransactionType;

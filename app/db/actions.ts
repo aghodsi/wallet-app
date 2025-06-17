@@ -94,6 +94,70 @@ export async function fetchCurrencyById(currencyId: number) {
     .limit(1);
 }
 
+export async function updateCurrency(currencyId: number, updates: {
+  exchangeRate?: number;
+  isDefault?: boolean;
+}) {
+  try {
+    return await db.transaction(async (tx) => {
+      // If setting this currency as default, first unset all other defaults
+      if (updates.isDefault) {
+        await tx
+          .update(currencyTable)
+          .set({ isDefault: 0 })
+          .where(ne(currencyTable.id, currencyId));
+      }
+
+      // Update the specified currency
+      const updateData: any = {};
+      if (updates.exchangeRate !== undefined) updateData.exchangeRate = updates.exchangeRate;
+      if (updates.isDefault !== undefined) updateData.isDefault = updates.isDefault ? 1 : 0;
+      updateData.lastUpdated = new Date().getTime().toString();
+
+      await tx
+        .update(currencyTable)
+        .set(updateData)
+        .where(eq(currencyTable.id, currencyId));
+
+      return [{ id: currencyId }];
+    });
+  } catch (error) {
+    console.error("Error updating currency:", error);
+    throw new Error(
+      `Failed to update currency: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function updateCurrencyExchangeRates(exchangeRates: Array<{
+  currencyId: number;
+  exchangeRate: number;
+}>) {
+  try {
+    return await db.transaction(async (tx) => {
+      for (const { currencyId, exchangeRate } of exchangeRates) {
+        await tx
+          .update(currencyTable)
+          .set({ 
+            exchangeRate,
+            lastUpdated: new Date().getTime().toString()
+          })
+          .where(eq(currencyTable.id, currencyId));
+      }
+      return { success: true };
+    });
+  } catch (error) {
+    console.error("Error updating currency exchange rates:", error);
+    throw new Error(
+      `Failed to update currency exchange rates: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
 export async function fetchTransactionsForPortfolio(portfolioId: number) {
   return db
     .select()
