@@ -7,6 +7,12 @@ import {
   TrendingUp,
   Coins,
   ArrowUpDown,
+  Settings,
+  Currency,
+  Clock,
+  Moon,
+  Sun,
+  Monitor,
 } from "lucide-react";
 
 import {
@@ -25,12 +31,14 @@ import { userPortfolios } from "~/stateManagement/portfolioContext";
 import { useTransactions } from "~/hooks/useTransactions";
 import { useNavigate } from "react-router";
 import { useDialogContext } from "~/contexts/transactionDialogContext";
+import { useTheme } from "~/components/theme-provider";
 
 export function SearchComponent() {
   const [open, setOpen] = useState(false);
   const isMac = useIsMac();
   const navigate = useNavigate();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
+  const { setTheme } = useTheme();
   const portfolios = userPortfolios();
   
   // Use useTransactions hook with portfolioId -1 to get all transactions
@@ -188,6 +196,60 @@ export function SearchComponent() {
                 <span className="text-muted-foreground">No assets found</span>
               </CommandItem>
             )}
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          {/* Configuration Section */}
+          <CommandGroup heading="Configuration">
+            <CommandItem onSelect={() => {
+              setOpen(false);
+              navigate('/portfolio-settings');
+            }}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Portfolio Settings</span>
+            </CommandItem>
+            <CommandItem onSelect={() => {
+              setOpen(false);
+              navigate('/currency-settings');
+            }}>
+              <Currency className="mr-2 h-4 w-4" />
+              <span>Currency Settings</span>
+            </CommandItem>
+            <CommandItem onSelect={() => {
+              setOpen(false);
+              navigate('/recurringTransactions');
+            }}>
+              <Clock className="mr-2 h-4 w-4" />
+              <span>Recurring Transactions</span>
+            </CommandItem>
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          {/* Theme Section */}
+          <CommandGroup heading="Theme">
+            <CommandItem onSelect={() => {
+              setTheme("light");
+              setOpen(false);
+            }}>
+              <Sun className="mr-2 h-4 w-4" />
+              <span>Light Mode</span>
+            </CommandItem>
+            <CommandItem onSelect={() => {
+              setTheme("dark");
+              setOpen(false);
+            }}>
+              <Moon className="mr-2 h-4 w-4" />
+              <span>Dark Mode</span>
+            </CommandItem>
+            <CommandItem onSelect={() => {
+              setTheme("system");
+              setOpen(false);
+            }}>
+              <Monitor className="mr-2 h-4 w-4" />
+              <span>System Theme</span>
+            </CommandItem>
           </CommandGroup>
         </CommandList>
       </CommandDialog>
