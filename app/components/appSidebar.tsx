@@ -5,6 +5,7 @@ import {
   Clock,
   Currency,
   FolderPlus,
+  Home,
   Plus,
   Settings,
   Settings2,
@@ -47,7 +48,13 @@ const data = {
   ],
   navItems: [
     {
-      name: "Overview",
+      name: "Home",
+      url: "/",
+      icon: Home,
+      needsPortfolio: false,
+    },
+    {
+      name: "Portfolio Overview",
       url: "/portfolio",
       icon: ChartNoAxesCombined,
       needsPortfolio: true,
