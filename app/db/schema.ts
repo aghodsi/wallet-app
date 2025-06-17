@@ -89,3 +89,13 @@ export const assetTable = mysqlTable('asset', {
     lastUpdated: varchar({ length: 200 }).notNull()
 });
 
+// Add cron runs table
+export const cronRuns = mysqlTable('cron_runs', {
+  id: int('id').autoincrement().primaryKey(),
+  transactionId: int('transaction_id').notNull().references(() => transactionTable.id),
+  runtime: varchar('runtime').notNull(),
+  status: varchar('status').notNull().default('completed'), // 'completed', 'failed', 'pending'
+  createdAt: varchar('created_at').notNull(),
+  errorMessage: varchar('error_message'),
+});
+

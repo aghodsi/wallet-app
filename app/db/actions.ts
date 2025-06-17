@@ -13,6 +13,7 @@ import type { InstitutionType } from "~/datatypes/institution";
 import type { PortfolioType } from "~/datatypes/portfolio";
 import type { TransactionType } from "~/datatypes/transaction";
 import type { AssetType } from "~/datatypes/asset";
+import { notEqual } from "assert";
 
 const connection = await mysql.createConnection({
   host: process.env.DATABASE_HOST!,

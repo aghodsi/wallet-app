@@ -19,7 +19,7 @@ import {
 } from "~/components/ui/sidebar"
 import { NavComponentCollapsable } from "./navComponentCollapsable"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
-import { useTransactionDialog } from "~/contexts/transactionDialogContext"
+import { useDialogContext } from "~/contexts/transactionDialogContext"
 
 const data = {
   user: {
@@ -81,24 +81,31 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const portfolios = userPortfolios();
-  const { openDialog } = useTransactionDialog();
+  const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
   const [actions, setActions] = React.useState(data.actions);
   const [navItems, setNavItems] = React.useState(data.navItems);
   const [settingsNavItems, setSettingsNavItems] = React.useState(data.settingsNavItems);
 
-  // Create modified actions with transaction dialog handler
+  // Create modified actions with dialog handlers
   const modifiedActions = React.useMemo(() => {
     return data.actions.map(action => {
       if (action.name === "Add Transaction") {
         return {
           ...action,
-          onClick: openDialog,
+          onClick: openTransactionDialog,
+          url: undefined
+        };
+      }
+      if (action.name === "Create Portfolio") {
+        return {
+          ...action,
+          onClick: openPortfolioDialog,
           url: undefined
         };
       }
       return action;
     });
-  }, [openDialog]);
+  }, [openTransactionDialog, openPortfolioDialog]);
 
 
 

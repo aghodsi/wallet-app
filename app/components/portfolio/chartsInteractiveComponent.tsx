@@ -91,10 +91,12 @@ export function ChartAreaInteractive({ data = [], currency = "USD", timeRange = 
         startDate.setFullYear(now.getFullYear() - 1)
     }
 
-    return data.filter((item) => {
-      const itemDate = new Date(item.date)
-      return itemDate >= startDate
-    })
+return data.filter((item) => {
+  const itemDate = new Date(item.date)
+  const day = itemDate.getDay()
+  const isWeekend = day === 0 || day === 6
+  return itemDate >= startDate && !isWeekend
+})
   }, [data, timeRange])
 
   // Calculate baseline based on selected period (cumulative investment at period start)

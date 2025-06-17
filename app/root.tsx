@@ -20,6 +20,7 @@ import {
   fetchInstitutionByIds,
   fetchPortfolios,
   fetchCurrencies,
+  fetchInstitutions,
 } from "./db/actions";
 import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
@@ -80,6 +81,13 @@ export async function loader({ params }: Route.LoaderArgs) {
   const allCurrencies = await queryClient.fetchQuery({
     queryKey: ["allCurrencies"],
     queryFn: fetchCurrencies,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
+
+  // Fetch all institutions for portfolio creation
+  const allInstitutions = await queryClient.fetchQuery({
+    queryKey: ["allInstitutions"],
+    queryFn: fetchInstitutions,
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
 
@@ -162,17 +170,30 @@ export async function loader({ params }: Route.LoaderArgs) {
     isDefault: Boolean(currency.isDefault)
   }));
 
-  return { portFoliosMapped, allCurrencies: transformedCurrencies };
+  // Transform allInstitutions to match InstitutionType interface
+  const transformedInstitutions = allInstitutions.map(institution => ({
+    ...institution,
+    isDefault: Boolean(institution.isDefault),
+    isNew: false,
+    website: institution.website || "",
+    apiKey: institution.apiKey || "",
+    apiSecret: institution.apiSecret || "",
+    apiUrl: institution.apiUrl || "",
+    lastUpdated: institution.lastUpdated || "0"
+  }));
+
+  return { portFoliosMapped, allCurrencies: transformedCurrencies, allInstitutions: transformedInstitutions };
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const portfolios = loaderData.portFoliosMapped;
   const currencies = loaderData.allCurrencies;
+  const institutions = loaderData.allInstitutions;
   return (
     <>
       <QueryClientProvider client={queryClient}>
         <PortfolioProvider initialPortfolios={portfolios}>
-          <TransactionDialogProvider currencies={currencies}>
+          <TransactionDialogProvider currencies={currencies} institutions={institutions}>
             <SidebarLayout>
               <Outlet />
             </SidebarLayout>
