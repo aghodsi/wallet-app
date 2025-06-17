@@ -3,9 +3,12 @@ import {
   ArrowRightLeft,
   ChartNoAxesCombined,
   Clock,
+  Currency,
   FolderPlus,
   Plus,
+  Settings,
   Settings2,
+  Wallet,
 } from "lucide-react"
 
 import { NavComponent } from "~/components/navComponent"
@@ -56,29 +59,52 @@ const data = {
       needsPortfolio: true,
     },
   ],
-  settingsNavItems: [{
-    title: "Settings",
-    url: "#",
-    icon: Settings2,
-    items: [
-      {
-        name: "Portfolio Settings",
-        url: "#",
-        needsPortfolio: true,
-      },
-      {
-        name: "Currency Settings",
-        url: "#",
-        needsPortfolio: false,
-      },
-      {
-        name: "Recurring",
-        url: "/recurring-transactions",
-        icon: Clock,
-        needsPortfolio: true,
-      }
-    ],
-  }]
+  settingsNavItems: [
+
+
+    {
+      name: "Portfolio Settings",
+      url: "/portfolio-settings",
+      icon: Settings,
+      needsPortfolio: true,
+    },
+    {
+      name: "Currency Settings",
+      url: "#",
+      icon: Currency,
+      needsPortfolio: false,
+    },
+    {
+      name: "Recurring Transactions",
+      url: "/recurring-transactions",
+      icon: Clock,
+      needsPortfolio: true,
+    }
+
+  ],
+  // settingsNavItems: [{
+  //   title: "Settings",
+  //   url: "#",
+  //   icon: Settings2,
+  //   items: [
+  //     {
+  //       name: "Portfolio Settings",
+  //       url: "#",
+  //       needsPortfolio: true,
+  //     },
+  //     {
+  //       name: "Currency Settings",
+  //       url: "#",
+  //       needsPortfolio: false,
+  //     },
+  //     {
+  //       name: "Recurring",
+  //       url: "/recurring-transactions",
+  //       icon: Clock,
+  //       needsPortfolio: true,
+  //     }
+  //   ],
+  // }]
 }
 
 
@@ -120,7 +146,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavComponent items={modifiedActions} title={"Actions"} />
         <NavComponent items={data.navItems} title={"Main"} />
-        <NavComponentCollapsable items={data.settingsNavItems} title={"Configuration"} />
+        <NavComponent items={data.settingsNavItems} title={"Configuration"} />
+        {/* <NavComponentCollapsable items={data.settingsNavItems} title={"Configuration"} /> */}
       </SidebarContent>
       <SidebarFooter>
         {/* <NavUser user={data.user} /> */}

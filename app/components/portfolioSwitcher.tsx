@@ -21,6 +21,7 @@ import { convertTextToIcon } from "~/lib/iconHelper";
 import { usePortfolioDispatch } from "~/stateManagement/portfolioContext";
 import { useEffect, useState } from "react";
 import { useIsMac } from "~/hooks/useIsMac";
+import { useDialogContext } from "~/contexts/transactionDialogContext";
 
 export function PortfolioSwitcher({
   portfolios,
@@ -29,6 +30,7 @@ export function PortfolioSwitcher({
 }) {
   const { isMobile } = useSidebar();
   const portfolioDispatch = usePortfolioDispatch();
+  const { openPortfolioDialog } = useDialogContext();
   const [activePortfolio, setActivePortfolio] = useState(
     portfolios.find((p) => p.selected) || null
   );
@@ -117,19 +119,14 @@ export function PortfolioSwitcher({
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
+            <DropdownMenuItem 
+              className="gap-2 p-2 cursor-pointer"
+              onClick={openPortfolioDialog}
+            >
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                 <Plus className="size-4" />
               </div>
-
-              <div>
-                <a
-                  href="/?action=createPortfolio"
-                  className="text-muted-foreground font-medium"
-                >
-                  <span>Add Portfolio</span>
-                </a>
-              </div>
+              <span className="text-muted-foreground font-medium">Add Portfolio</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

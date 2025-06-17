@@ -151,6 +151,45 @@ export async function createPortfolio(portfolio: PortfolioType) {
   }
 }
 
+export async function updatePortfolio(portfolioId: number, portfolio: Partial<PortfolioType>) {
+  try {
+    return await db.transaction(async (tx) => {
+      let institutionId = portfolio.institution?.id;
+
+      if (portfolio.institution?.isNew) {
+        const created = await createInstitution(portfolio.institution);
+        if (!created || !Array.isArray(created) || created.length === 0) {
+          throw new Error("Failed to create new institution");
+        }
+        institutionId = created[0].id;
+      }
+
+      const updateData: any = {};
+      
+      if (portfolio.name !== undefined) updateData.name = portfolio.name;
+      if (portfolio.currency !== undefined) updateData.currency = portfolio.currency.id;
+      if (portfolio.symbol !== undefined) updateData.symbol = portfolio.symbol;
+      if (portfolio.type !== undefined) updateData.type = portfolio.type;
+      if (institutionId !== undefined) updateData.institutionId = institutionId;
+      if (portfolio.tags !== undefined) updateData.tags = portfolio.tags || "";
+
+      await tx
+        .update(portfolioTable)
+        .set(updateData)
+        .where(eq(portfolioTable.id, portfolioId));
+
+      return [{ id: portfolioId }];
+    });
+  } catch (error) {
+    console.error("Error updating portfolio:", error);
+    throw new Error(
+      `Failed to update portfolio: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
 export async function createInstitution(institution: InstitutionType) {
   try {
     return db

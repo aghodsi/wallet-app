@@ -85,7 +85,7 @@ export function GlobalDialogs() {
       
       <PortfolioCreation
         open={activeDialog === 'portfolio'}
-        openChange={closeDialog}
+        openChange={(open) => !open && closeDialog()}
         onCreate={(portfolio) => createPortfolioMutation.mutate(portfolio)}
         institutions={institutions}
         currencies={currencies}

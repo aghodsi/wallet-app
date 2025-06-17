@@ -6,6 +6,7 @@ export default [
     route("/recurring-transactions", "routes/recurringTransactions.tsx"),
     route("/createPortfolio", "routes/createPortfolio.tsx"),
     route("/portfolio", "routes/portfolio.tsx"),
+    route("/portfolio-settings", "routes/portfolioSettings.tsx"),
     route("/searchSymbol", "routes/searchSymbol.tsx"),
     route("/fetchAssetChart", "routes/fetchAssetChart.tsx"),
     route("/calendar-test", "routes/calendar-test.tsx"),
