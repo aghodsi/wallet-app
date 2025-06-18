@@ -25,6 +25,7 @@ export const transactionTable = mysqlTable('transaction', {
     quantity: double('quantity').notNull(),
     price: double('price').notNull(),
     commision: double('commission').notNull(),
+    currency: int().references(() => currencyTable.id, { onDelete: 'cascade'}), // Transaction currency, defaults to portfolio currency if null
     recurrence: varchar({ length: 50 } ), // cron expression for recurring transactions
     tax: double('tax').notNull(),
     tags: varchar({ length: 500 }).default(''),

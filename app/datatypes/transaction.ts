@@ -1,3 +1,5 @@
+import type { CurrencyType } from "./currency";
+
 export type TransactionType = {
   id: number;
   portfolioId: number;
@@ -11,6 +13,7 @@ export type TransactionType = {
   quantity: number;
   price: number;
   commision: number;
+  currency?: CurrencyType; // Transaction currency, defaults to portfolio currency if not set
   tax: number;
   recurrence?: string; // cron expression for recurring transactions
   tags: string;

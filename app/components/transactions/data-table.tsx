@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Download } from "lucide-react"
 
 import { Button } from "~/components/ui/button"
 import {
@@ -33,6 +33,15 @@ import {
 } from "~/components/ui/table"
 import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 import { convertTextToIcon } from "~/lib/iconHelper"
+import { transactionsToCSV, downloadCSV } from "~/lib/csvUtils"
+import { type TransactionType } from "~/datatypes/transaction"
+import { type PortfolioType } from "~/datatypes/portfolio"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -41,8 +50,9 @@ interface DataTableProps<TData, TValue> {
   onEditTransaction?: (transaction: any) => void
   onCloneTransaction?: (transaction: any) => void
   onDeleteTransaction?: (transactionId: number) => void
-  portfolios?: any[]
+  portfolios?: PortfolioType[]
   selectedPortfolioId?: number
+  showOriginalCurrency?: boolean
 }
 
 // Helper function to convert column IDs to proper display names
@@ -77,6 +87,7 @@ export function TransactionsDataTable<TData, TValue>({
   onDeleteTransaction,
   portfolios = [],
   selectedPortfolioId,
+  showOriginalCurrency = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -133,6 +144,38 @@ export function TransactionsDataTable<TData, TValue>({
     },
   })
 
+  // Handle CSV export
+  const handleExportCSV = React.useCallback(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const hasSelectedRows = selectedRows.length > 0
+    
+    // Get transactions to export (selected or all filtered)
+    const transactionsToExport = hasSelectedRows 
+      ? selectedRows.map(row => row.original as TransactionType)
+      : table.getFilteredRowModel().rows.map(row => row.original as TransactionType)
+    
+    // Get selected portfolio for currency conversion
+    const selectedPortfolio = portfolios.find(p => p.id === selectedPortfolioId)
+    
+    // Generate CSV content
+    const csvContent = transactionsToCSV(transactionsToExport, {
+      portfolios,
+      showOriginalCurrency,
+      selectedPortfolio
+    })
+    
+    // Generate filename with timestamp and selection info
+    const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+    const selectionInfo = hasSelectedRows ? `selected_${selectedRows.length}` : 'all'
+    const portfolioName = selectedPortfolio && selectedPortfolio.id !== -1 
+      ? `_${selectedPortfolio.name.replace(/[^a-zA-Z0-9]/g, '_')}`
+      : ''
+    const filename = `transactions_${selectionInfo}${portfolioName}_${timestamp}.csv`
+    
+    // Download the CSV
+    downloadCSV(csvContent, filename)
+  }, [table, portfolios, selectedPortfolioId, showOriginalCurrency])
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4 gap-4 flex-wrap">
@@ -181,32 +224,58 @@ export function TransactionsDataTable<TData, TValue>({
           </>
         )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {getColumnDisplayName(column.id)}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2 ml-auto">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCSV}
+                  disabled={table.getFilteredRowModel().rows.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {table.getFilteredSelectedRowModel().rows.length > 0
+                    ? `Export ${table.getFilteredSelectedRowModel().rows.length} selected transactions`
+                    : `Export all ${table.getFilteredRowModel().rows.length} transactions`
+                  }
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {getColumnDisplayName(column.id)}
+                    </DropdownMenuCheckboxItem>
+                  )
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>

@@ -20,7 +20,9 @@ import {
 import type { TransactionType } from "~/datatypes/transaction"
 import type { AssetType } from "~/datatypes/asset"
 import type { PortfolioType } from "~/datatypes/portfolio"
+import type { CurrencyType } from "~/datatypes/currency"
 import { useMemo } from "react"
+import { convertCurrency, formatCurrency as formatCurrencyUtil } from "~/lib/currencyUtils"
 
 interface FactCardsProps {
   transactions: TransactionType[];
@@ -37,35 +39,157 @@ export function FactCards({
   timeRange = "All time",
   selectedPortfolio
 }: FactCardsProps) {
-  // Calculate stats from transactions
+  // Calculate stats from transactions with currency conversion
   const calculatedStats = useMemo(() => {
+    if (!selectedPortfolio?.currency) {
+      return {
+        totalInvestment: 0,
+        totalCash: 0,
+        totalCommission: 0,
+        totalTaxes: 0,
+        currentPortfolioValue: 0,
+        transactionCount: 0,
+      };
+    }
+
+    const portfolioCurrency = selectedPortfolio.currency;
     const nonHousekeepingTransactions = transactions.filter(t => !t.isHousekeeping);
     
-    // Calculate totals
-    const totalCommission = nonHousekeepingTransactions.reduce((sum, t) => sum + (t.commision || 0), 0);
-    const totalTaxes = nonHousekeepingTransactions.reduce((sum, t) => sum + (t.tax || 0), 0);
+    // Helper function to convert transaction amounts to portfolio currency
+    const convertToPortfolioCurrency = (amount: number, transactionCurrency?: CurrencyType) => {
+      if (!transactionCurrency) {
+        return amount; // If no transaction currency, assume it's already in portfolio currency
+      }
+      return convertCurrency(amount, transactionCurrency, portfolioCurrency);
+    };
+    
+    // Calculate totals with currency conversion
+    const totalCommission = nonHousekeepingTransactions.reduce((sum, t) => {
+      const convertedCommission = convertToPortfolioCurrency(t.commision || 0, t.currency);
+      return sum + convertedCommission;
+    }, 0);
+    
+    const totalTaxes = nonHousekeepingTransactions.reduce((sum, t) => {
+      const convertedTax = convertToPortfolioCurrency(t.tax || 0, t.currency);
+      return sum + convertedTax;
+    }, 0);
+    
     const transactionCount = nonHousekeepingTransactions.length;
     
-    // Calculate investment and performance (simplified for demo)
+    // Calculate investment with currency conversion
     const buyTransactions = nonHousekeepingTransactions.filter(t => t.type === "Buy");
-    const totalInvestment = buyTransactions.reduce((sum, t) => sum + (t.quantity * t.price + t.commision + t.tax), 0);
+    const totalInvestment = buyTransactions.reduce((sum, t) => {
+      const convertedAmount = convertToPortfolioCurrency(t.quantity * t.price, t.currency);
+      const convertedCommission = convertToPortfolioCurrency(t.commision || 0, t.currency);
+      const convertedTax = convertToPortfolioCurrency(t.tax || 0, t.currency);
+      return sum + convertedAmount + convertedCommission + convertedTax;
+    }, 0);
+
+    // Calculate current holdings by tracking net positions
+    const holdingsMap = new Map<string, number>();
     
-    // Mock performance calculation (in real app this would come from current asset prices)
-    const performance = totalInvestment * 1.15; // Assume 15% growth for demo
-    const totalCash = performance * 0.1; // Assume 10% cash position
+    // Process all asset transactions to get current holdings
+    nonHousekeepingTransactions.forEach(transaction => {
+      const symbol = transaction.asset.symbol;
+      const currentHolding = holdingsMap.get(symbol) || 0;
+      
+      if (transaction.type === "Buy") {
+        holdingsMap.set(symbol, currentHolding + transaction.quantity);
+      } else if (transaction.type === "Sell") {
+        holdingsMap.set(symbol, currentHolding - transaction.quantity);
+      }
+    });
+
+    // Calculate current portfolio value based on holdings and last asset prices
+    let currentPortfolioValue = 0;
+    console.log('📊 Starting portfolio value calculation');
+    console.log('Holdings map:', Array.from(holdingsMap.entries()));
+    console.log('Available assets:', assets.map(a => ({ symbol: a.symbol, quotesCount: a.quotes.length })));
+    
+    holdingsMap.forEach((quantity, symbol) => {
+      console.log(`Processing holding: ${symbol}, quantity: ${quantity}`);
+      if (quantity > 0) { // Only count positive holdings
+        const asset = assets.find(a => a.symbol === symbol);
+        console.log(`Found asset for ${symbol}:`, asset ? 'YES' : 'NO');
+        
+        if (asset && asset.quotes.length > 0) {
+          // Get the most recent quote
+          const latestQuote = asset.quotes[asset.quotes.length - 1];
+          const lastPrice = latestQuote.close || latestQuote.adjclose || 0;
+          console.log(`${symbol} - Latest quote:`, latestQuote, 'Last price:', lastPrice);
+          
+          // Convert asset currency to portfolio currency if needed
+          const assetValue = quantity * lastPrice;
+          console.log(`${symbol} - Asset value before conversion:`, assetValue, `(${quantity} * ${lastPrice})`);
+          
+          // Create a mock currency object for the asset since asset.currency is a string
+          const assetCurrency: CurrencyType = {
+            id: -1,
+            code: asset.currency,
+            name: asset.currency,
+            symbol: asset.currency,
+            exchangeRate: 1, // Assuming 1:1 if no rate available
+            isDefault: false,
+            lastUpdated: new Date().toISOString(),
+          };
+          
+          const convertedValue = convertCurrency(assetValue, assetCurrency, portfolioCurrency);
+          console.log(`${symbol} - Converted value:`, convertedValue, `(from ${asset.currency} to ${portfolioCurrency.code})`);
+          
+          currentPortfolioValue += convertedValue;
+          console.log(`${symbol} - Running total:`, currentPortfolioValue);
+        } else {
+          console.log(`${symbol} - No asset found or no quotes available`);
+        }
+      } else {
+        console.log(`${symbol} - Skipping negative/zero quantity`);
+      }
+    });
+    
+    console.log('💰 Final current portfolio value:', currentPortfolioValue);
+
+    // Calculate cash based on sell and dividend activities only
+    let totalCash = 0;
+    
+    // Add cash from sell transactions
+    const sellTransactions = nonHousekeepingTransactions.filter(t => t.type === "Sell");
+    sellTransactions.forEach(transaction => {
+      const cashFromSale = convertToPortfolioCurrency(
+        transaction.quantity * transaction.price - (transaction.commision || 0) - (transaction.tax || 0),
+        transaction.currency
+      );
+      totalCash += cashFromSale;
+    });
+
+    // Add cash from dividend transactions
+    const dividendTransactions = nonHousekeepingTransactions.filter(t => t.type === "Dividend");
+    dividendTransactions.forEach(transaction => {
+      const dividendAmount = convertToPortfolioCurrency(
+        transaction.quantity * transaction.price - (transaction.tax || 0),
+        transaction.currency
+      );
+      totalCash += dividendAmount;
+    });
+
+    // For Investment portfolios, ensure cash cannot be negative
+    if (selectedPortfolio.type === "Investment" && totalCash < 0) {
+      totalCash = 0;
+    }
     
     return {
       totalInvestment,
       totalCash,
       totalCommission,
       totalTaxes,
-      performance,
+      currentPortfolioValue,
       transactionCount,
     };
-  }, [transactions]);
+  }, [transactions, selectedPortfolio, assets]);
 
-  // Generate country data from transactions using asset information
+  // Generate country data from transactions using asset information with currency conversion
   const countryData = useMemo(() => {
+    if (!selectedPortfolio?.currency) return [];
+
     // Map exchange names to countries
     const exchangeToCountry: Record<string, string> = {
       'NASDAQ': 'United States',
@@ -82,7 +206,16 @@ export function FactCards({
       'SWX': 'Switzerland',
     };
     
+    const portfolioCurrency = selectedPortfolio.currency;
     const countryMap = new Map<string, number>();
+    
+    // Helper function to convert transaction amounts to portfolio currency
+    const convertToPortfolioCurrency = (amount: number, transactionCurrency?: CurrencyType) => {
+      if (!transactionCurrency) {
+        return amount; // If no transaction currency, assume it's already in portfolio currency
+      }
+      return convertCurrency(amount, transactionCurrency, portfolioCurrency);
+    };
     
     transactions.forEach((transaction) => {
       if (!transaction.isHousekeeping) {
@@ -99,7 +232,7 @@ export function FactCards({
                    'Other';
         }
         
-        const amount = transaction.quantity * transaction.price;
+        const amount = convertToPortfolioCurrency(transaction.quantity * transaction.price, transaction.currency);
         countryMap.set(country, (countryMap.get(country) || 0) + amount);
       }
     });
@@ -112,10 +245,12 @@ export function FactCards({
       }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5); // Top 5 countries
-  }, [transactions, assets]);
+  }, [transactions, assets, selectedPortfolio]);
 
-  // Generate asset allocation data from transactions using asset information
+  // Generate asset allocation data from transactions using asset information with currency conversion
   const assetAllocationData = useMemo(() => {
+    if (!selectedPortfolio?.currency) return [];
+
     // Map asset symbols to asset classes based on instrument type or symbol patterns
     const getAssetClass = (asset?: AssetType) => {
       if (!asset) return 'Other';
@@ -150,7 +285,16 @@ export function FactCards({
       return 'Stocks';
     };
     
+    const portfolioCurrency = selectedPortfolio.currency;
     const allocationMap = new Map<string, number>();
+    
+    // Helper function to convert transaction amounts to portfolio currency
+    const convertToPortfolioCurrency = (amount: number, transactionCurrency?: CurrencyType) => {
+      if (!transactionCurrency) {
+        return amount; // If no transaction currency, assume it's already in portfolio currency
+      }
+      return convertCurrency(amount, transactionCurrency, portfolioCurrency);
+    };
     
     transactions.forEach((transaction) => {
       if (!transaction.isHousekeeping && transaction.type === "Buy") {
@@ -158,7 +302,7 @@ export function FactCards({
         const asset = assets.find(a => a.symbol === transaction.asset.symbol);
         const assetClass = getAssetClass(asset);
         
-        const amount = transaction.quantity * transaction.price;
+        const amount = convertToPortfolioCurrency(transaction.quantity * transaction.price, transaction.currency);
         allocationMap.set(assetClass, (allocationMap.get(assetClass) || 0) + amount);
       }
     });
@@ -183,7 +327,7 @@ export function FactCards({
         };
       })
       .sort((a, b) => b.amount - a.amount);
-  }, [transactions, assets]);
+  }, [transactions, assets, selectedPortfolio]);
 
   // Calculate percentages for asset allocation
   const assetAllocationWithPercentages = useMemo(() => {
@@ -220,7 +364,7 @@ export function FactCards({
     },
   } satisfies ChartConfig;
 
-  const { totalInvestment, totalCash, totalCommission, totalTaxes, performance, transactionCount } = calculatedStats;
+  const { totalInvestment, totalCash, totalCommission, totalTaxes, currentPortfolioValue, transactionCount } = calculatedStats;
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -234,21 +378,39 @@ export function FactCards({
     return new Intl.NumberFormat('en-US').format(num);
   };
 
-  const performancePercentage = totalInvestment > 0 ? ((performance - totalInvestment) / totalInvestment * 100) : 0;
+  const performancePercentage = totalInvestment > 0 ? ((currentPortfolioValue - totalInvestment) / totalInvestment * 100) : 0;
   const isPerformancePositive = performancePercentage >= 0;
 
   // Check if this is a savings portfolio
   const isSavingsPortfolio = selectedPortfolio?.type === "Saving";
 
-  // Calculate savings-specific metrics
+  // Calculate savings-specific metrics with currency conversion
   const savingsStats = useMemo(() => {
-    if (!isSavingsPortfolio) return null;
+    if (!isSavingsPortfolio || !selectedPortfolio?.currency) return null;
+    
+    const portfolioCurrency = selectedPortfolio.currency;
+    
+    // Helper function to convert transaction amounts to portfolio currency
+    const convertToPortfolioCurrency = (amount: number, transactionCurrency?: CurrencyType) => {
+      if (!transactionCurrency) {
+        return amount; // If no transaction currency, assume it's already in portfolio currency
+      }
+      return convertCurrency(amount, transactionCurrency, portfolioCurrency);
+    };
     
     const deposits = transactions.filter(t => t.type === "Buy" && !t.isHousekeeping);
     const withdrawals = transactions.filter(t => t.type === "Sell" && !t.isHousekeeping);
     
-    const totalDeposits = deposits.reduce((sum, t) => sum + (t.quantity * t.price), 0);
-    const totalWithdrawals = withdrawals.reduce((sum, t) => sum + (t.quantity * t.price), 0);
+    const totalDeposits = deposits.reduce((sum, t) => {
+      const convertedAmount = convertToPortfolioCurrency(t.quantity * t.price, t.currency);
+      return sum + convertedAmount;
+    }, 0);
+    
+    const totalWithdrawals = withdrawals.reduce((sum, t) => {
+      const convertedAmount = convertToPortfolioCurrency(t.quantity * t.price, t.currency);
+      return sum + convertedAmount;
+    }, 0);
+    
     const netSavings = totalDeposits - totalWithdrawals;
     const currentBalance = selectedPortfolio?.cashBalance || totalCash;
     
@@ -495,18 +657,18 @@ export function FactCards({
         <CardHeader>
           <CardDescription>Current Value</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatCurrency(performance)}
+            {formatCurrency(currentPortfolioValue)}
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
               {isPerformancePositive ? <TrendingUp /> : <TrendingDown />}
-              {formatCurrency(performance - totalInvestment)}
+              {formatCurrency(currentPortfolioValue - totalInvestment)}
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            {isPerformancePositive ? 'Gain' : 'Loss'}: {formatCurrency(Math.abs(performance - totalInvestment))} {isPerformancePositive ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
+            {isPerformancePositive ? 'Gain' : 'Loss'}: {formatCurrency(Math.abs(currentPortfolioValue - totalInvestment))} {isPerformancePositive ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
           </div>
           <div className="text-muted-foreground">
             Current portfolio value

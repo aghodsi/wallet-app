@@ -8,6 +8,7 @@ export default [
     route("/portfolio", "routes/portfolio.tsx"),
     route("/portfolio-settings", "routes/portfolioSettings.tsx"),
     route("/currency-settings", "routes/currencySettings.tsx"),
+    route("/assets-configuration", "routes/assetsConfiguration.tsx"),
     route("/import", "routes/import.tsx"),
     route("/searchSymbol", "routes/searchSymbol.tsx"),
     route("/fetchAssetChart", "routes/fetchAssetChart.tsx"),

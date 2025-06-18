@@ -7,6 +7,8 @@ import type { Route } from "./+types/portfolio";
 import { fetchAllTransactions } from "~/db/actions";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { AssetType } from "~/datatypes/asset";
+import type { CurrencyType } from "~/datatypes/currency";
+import { useTransactionDialog } from "~/contexts/transactionDialogContext";
 import { useMemo, useState } from "react";
 import {
   Select,
@@ -30,6 +32,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
   const [timeRange, setTimeRange] = useState("1Y");
   const portfolios = userPortfolios();
   const selectedPortfolio = portfolios.find((p) => p.selected);
+  const { currencies } = useTransactionDialog();
   // TanStack Query for asset search
   const transactionQueries = useQueries({
     queries: loaderData.transactions.map((transaction) => {
@@ -77,17 +80,21 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
       : loaderData.transactions || [];
 
   // Transform database transactions to match TransactionType interface
-  const transactions: TransactionType[] = rawTransactions.map(t => ({
-    ...t,
-    asset: {
-      symbol: t.asset,
-      isFetchedFromApi: false, // Default value, could be enhanced based on your logic
-    },
-    isHousekeeping: Boolean(t.isHouskeeping), // Convert number to boolean
-    recurrence: t.recurrence || undefined, // Convert null to undefined
-    tags: t.tags || "", // Convert null to empty string
-    notes: t.notes || undefined, // Convert null to undefined
-  }));
+  const transactions: TransactionType[] = rawTransactions.map(t => {
+    const transactionPortfolio = portfolios.find(p => p.id === t.portfolioId);
+    return {
+      ...t,
+      asset: {
+        symbol: t.asset,
+        isFetchedFromApi: false, // Default value, could be enhanced based on your logic
+      },
+      currency: t.currency ? currencies.find(c => c.id === t.currency) : transactionPortfolio?.currency, // Use transaction currency or fall back to portfolio currency
+      isHousekeeping: Boolean(t.isHouskeeping), // Convert number to boolean
+      recurrence: t.recurrence || undefined, // Convert null to undefined
+      tags: t.tags || "", // Convert null to empty string
+      notes: t.notes || undefined, // Convert null to undefined
+    };
+  });
 
   console.log("Selected Portfolio:", selectedPortfolio);
   console.log("Filtered Transactions:", transactions);
@@ -313,14 +320,14 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
         <FactCards 
           transactions={transactions}
           assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
-          currency="USD"
+          currency={selectedPortfolio?.currency?.code || "USD"}
           timeRange={timeRangeLabels[timeRange as keyof typeof timeRangeLabels]}
           selectedPortfolio={selectedPortfolio}
         />
         <div className="px-4 lg:px-6">
           <ChartAreaInteractive 
             data={chartData} 
-            currency="USD" 
+            currency={selectedPortfolio?.currency?.code || "USD"} 
             timeRange={timeRange}
           />
         </div>
@@ -341,7 +348,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
                 transactions={transactions}
                 assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
                 timeRange={timeRange}
-                currency="USD"
+                currency={selectedPortfolio?.currency?.code || "USD"}
               />
             </div>
           </div>

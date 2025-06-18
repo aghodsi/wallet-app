@@ -24,6 +24,7 @@ import {
 import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
+import { CurrencyDisplayProvider } from "./contexts/currencyDisplayContext";
 import type { PortfolioType } from "./datatypes/portfolio";
 import { cronService } from "./services/cronService";
 import { ThemeProvider } from "./components/theme-provider";
@@ -160,10 +161,12 @@ export async function loader({ params }: Route.LoaderArgs) {
         isNew: false,
       },
       cashBalance: 0,
-      selected: true,
+      selected: false, // Default to false, let state management handle selection
       createdAt: "0",
     });
   }
+
+  // Portfolio selection is now handled in the PortfolioProvider context
   // Transform allCurrencies to match CurrencyType interface
   const transformedCurrencies = allCurrencies.map(currency => ({
     ...currency,
@@ -203,11 +206,13 @@ export default function App({ loaderData }: Route.ComponentProps) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
           <PortfolioProvider initialPortfolios={portfolios}>
-            <TransactionDialogProvider currencies={currencies} institutions={institutions}>
-              <SidebarLayout>
-                <Outlet />
-              </SidebarLayout>
-            </TransactionDialogProvider>
+            <CurrencyDisplayProvider>
+              <TransactionDialogProvider currencies={currencies} institutions={institutions}>
+                <SidebarLayout>
+                  <Outlet />
+                </SidebarLayout>
+              </TransactionDialogProvider>
+            </CurrencyDisplayProvider>
           </PortfolioProvider>
         </ThemeProvider>
         <ReactQueryDevtools initialIsOpen={false} />

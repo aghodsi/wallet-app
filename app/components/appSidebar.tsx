@@ -4,6 +4,7 @@ import {
   ChartNoAxesCombined,
   Clock,
   Currency,
+  Database,
   FolderPlus,
   Home,
   Import,
@@ -26,6 +27,7 @@ import {
 import { NavComponentCollapsable } from "./navComponentCollapsable"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
 import { useDialogContext } from "~/contexts/transactionDialogContext"
+import { DataFreshnessIndicator } from "./dataFreshnessIndicator"
 
 const data = {
   user: {
@@ -80,6 +82,12 @@ const data = {
       name: "Currency Settings",
       url: "/currency-settings",
       icon: Currency,
+      needsPortfolio: false,
+    },
+    {
+      name: "Assets Configuration",
+      url: "/assets-configuration",
+      icon: Database,
       needsPortfolio: false,
     },
     {
@@ -164,6 +172,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavComponentCollapsable items={data.settingsNavItems} title={"Configuration"} /> */}
       </SidebarContent>
       <SidebarFooter>
+        <DataFreshnessIndicator />
         {/* <NavUser user={data.user} /> */}
       </SidebarFooter>
       <SidebarRail />

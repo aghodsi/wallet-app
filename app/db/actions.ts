@@ -303,7 +303,11 @@ export async function getAssetsBySymbols(symbols: string[]) {
 }
 
 export async function getAllAssets() {
-  return db.select().from(transactionTable);
+  return db.select().from(assetTable);
+}
+
+export async function getAllAssetsWithDateRange() {
+  return db.select().from(assetTable);
 }
 
 export async function createAsset(asset: AssetType) {
