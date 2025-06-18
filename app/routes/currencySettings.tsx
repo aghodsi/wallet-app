@@ -122,15 +122,15 @@ export default function CurrencySettings({ loaderData }: ComponentProps) {
   const otherCurrencies = currencies.filter((c: CurrencyType) => c.id !== defaultCurrencyId);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Currency Settings</h1>
-        <p className="text-muted-foreground">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="space-y-1 sm:space-y-2">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Currency Settings</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
           Manage your default currency and exchange rates for currency conversion.
         </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-4 sm:gap-6">
         {/* Default Currency Selection */}
         <Card>
           <CardHeader>
@@ -203,29 +203,31 @@ export default function CurrencySettings({ loaderData }: ComponentProps) {
                       Enter how many units of each currency equals 1 {defaultCurrency.code}
                     </div>
                     {otherCurrencies.map((currency: CurrencyType) => (
-                      <div key={currency.id} className="flex items-center justify-between space-x-4">
-                        <div className="flex items-center space-x-3 flex-1">
-                          <div className="text-xl">{currency.symbol}</div>
-                          <div>
+                      <div key={currency.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-0 border sm:border-0 rounded-lg sm:rounded-none">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <div className="text-lg sm:text-xl shrink-0">{currency.symbol}</div>
+                          <div className="min-w-0">
                             <div className="font-medium">{currency.code}</div>
-                            <div className="text-sm text-muted-foreground">{currency.name}</div>
+                            <div className="text-sm text-muted-foreground truncate">{currency.name}</div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Label htmlFor={`rate-${currency.id}`} className="text-sm whitespace-nowrap">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2">
+                          <Label htmlFor={`rate-${currency.id}`} className="text-sm font-medium sm:whitespace-nowrap">
                             1 {defaultCurrency.code} =
                           </Label>
-                          <Input
-                            id={`rate-${currency.id}`}
-                            type="number"
-                            step="0.000001"
-                            min="0"
-                            value={exchangeRates[currency.id] || ""}
-                            onChange={(e) => handleExchangeRateChange(currency.id, e.target.value)}
-                            className="w-32"
-                            placeholder="0.00"
-                          />
-                          <span className="text-sm text-muted-foreground">{currency.code}</span>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id={`rate-${currency.id}`}
+                              type="number"
+                              step="0.000001"
+                              min="0"
+                              value={exchangeRates[currency.id] || ""}
+                              onChange={(e) => handleExchangeRateChange(currency.id, e.target.value)}
+                              className="w-full sm:w-32"
+                              placeholder="0.00"
+                            />
+                            <span className="text-sm text-muted-foreground shrink-0">{currency.code}</span>
+                          </div>
                         </div>
                       </div>
                     ))}

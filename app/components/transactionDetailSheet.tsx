@@ -72,8 +72,16 @@ export function TransactionDetailSheet({
   // Form state
   const [portfolioId, setPortfolioId] = useState(0)
   const [targetPortfolioId, setTargetPortfolioId] = useState(0)
-  const [date, setDate] = useState<Date>(new Date())
+  const [date, setDate] = useState<Date | undefined>(undefined)
   const [time, setTime] = useState("10:30:00")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    if (!date) {
+      setDate(new Date())
+    }
+  }, [date])
   const [type, setType] = useState<"Buy" | "Sell" | "Dividend" | "Deposit" | "Withdraw">("Buy")
   const [asset, setAsset] = useState<Option>({} as Option)
   const [quantity, setQuantity] = useState(0)
@@ -189,7 +197,7 @@ export function TransactionDetailSheet({
   }, [transaction, open])
 
   const handleSave = () => {
-    if (!transaction) return
+    if (!transaction || !date) return
 
     // Combine date and time into epoch timestamp
     const dateString = date.toISOString().split('T')[0]

@@ -310,10 +310,10 @@ export function PortfolioSettings({
                     institutions.find(
                       (inst) => inst.id.toString() === selected[0].value
                     ) || {
-                      id: parseInt(selected[0].value) || Date.now(),
+                      id: parseInt(selected[0].value) || Math.floor(Math.random() * 10000),
                       name: selected[0].label,
                       isDefault: false,
-                      lastUpdated: Date.now().toString(),
+                      lastUpdated: new Date().toISOString(),
                       isNew: true,
                     }
                   );

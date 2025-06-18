@@ -111,10 +111,29 @@ export default function CalendarComponent({
   title
 }: CalendarComponentProps) {
   const [date, setDate] = useState<Date | undefined>(undefined)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     setDate(new Date())
   }, [])
+
+  if (!mounted) {
+    return (
+      <Card className="w-full">
+        {title && (
+          <CardHeader className="text-center">
+            <CardTitle>{title}</CardTitle>
+          </CardHeader>
+        )}
+        <CardContent className="space-y-3">
+          <div className="flex justify-center">
+            <div className="w-full h-64 bg-muted animate-pulse rounded-lg" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="w-full">

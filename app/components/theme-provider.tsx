@@ -26,13 +26,19 @@ export function ThemeProvider({
   storageKey = "wallet-ui-theme",
   ...props
 }: ThemeProviderProps) {
+  // Always start with defaultTheme on server to avoid hydration issues
   const [theme, setTheme] = useState<Theme>(defaultTheme)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Initialize theme from localStorage on client side
-    const storedTheme = (typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null) as Theme
-    if (storedTheme) {
-      setTheme(storedTheme)
+    setMounted(true)
+    
+    // Sync with localStorage after mount
+    if (typeof window !== "undefined") {
+      const storedTheme = window.localStorage.getItem(storageKey) as Theme
+      if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system')) {
+        setTheme(storedTheme)
+      }
     }
   }, [storageKey])
 

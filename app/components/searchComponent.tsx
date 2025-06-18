@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import {
   Plus,
@@ -32,6 +30,7 @@ import { useTransactions } from "~/hooks/useTransactions";
 import { useNavigate } from "react-router";
 import { useDialogContext } from "~/contexts/transactionDialogContext";
 import { useTheme } from "~/components/theme-provider";
+import { formatDate } from "~/lib/dateUtils";
 
 export function SearchComponent() {
   const [open, setOpen] = useState(false);
@@ -169,7 +168,7 @@ export function SearchComponent() {
                   <TrendingUp className="mr-2 h-4 w-4" />
                   <span>{transaction.type} {typeof transaction.asset === 'string' ? transaction.asset : transaction.asset?.symbol}</span>
                   <div className="ml-auto text-xs text-muted-foreground">
-                    {new Date(parseInt(transaction.date)).toLocaleDateString()}
+                    {formatDate(parseInt(transaction.date))}
                   </div>
                 </CommandItem>
               ))

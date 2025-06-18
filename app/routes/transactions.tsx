@@ -171,16 +171,21 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="pt-16 p-4 container mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Transactions</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Transactions</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Manage and view all your portfolio transactions
           </p>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button 
+          onClick={() => openDialog()}
+          className="w-full sm:w-auto shrink-0"
+          size="default"
+        >
           <Plus className="mr-2 h-4 w-4" />
-          Add Transaction
+          <span className="hidden xs:inline">Add Transaction</span>
+          <span className="xs:hidden">Add</span>
         </Button>
       </div>
       

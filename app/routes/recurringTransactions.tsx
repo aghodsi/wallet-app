@@ -226,22 +226,26 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
 
   return (
     <main className="pt-16 p-4 container mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Clock className="h-8 w-8" />
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <Clock className="h-6 w-6 sm:h-8 sm:w-8" />
             Recurring Transactions
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm sm:text-base">
             View and manage transactions with recurring schedules
             {selectedPortfolio && selectedPortfolio.id !== -1 && (
               <span> for {selectedPortfolio.name}</span>
             )}
           </p>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button 
+          onClick={() => openDialog()}
+          className="w-full sm:w-auto shrink-0"
+        >
           <Plus className="mr-2 h-4 w-4" />
-          Add Transaction
+          <span className="hidden xs:inline">Add Transaction</span>
+          <span className="xs:hidden">Add</span>
         </Button>
       </div>
 

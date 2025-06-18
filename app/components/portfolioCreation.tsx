@@ -58,12 +58,13 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
   const [type, setType] = useState<"Current" | "Saving" | "Investment">(
     "Current"
   );
+  const [institutionError, setInstitutionError] = useState(false);
 
   const icons = getIcons(); // Get available icons
 
   const handleCreate = () => {
     if (!institution) {
-      document.getElementById("error")!.hidden = false;
+      setInstitutionError(true);
       return;
     }
     props.onCreate({
@@ -207,7 +208,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
                 : []
             }
             onChange={(selected) => {
-              document.getElementById("error")!.hidden = selected.length > 0;
+              setInstitutionError(selected.length === 0);
               setInstitution(
                 props.institutions.find(
                   (inst) => inst.id.toString() === selected[0].value
@@ -215,15 +216,17 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
                   id: getRndInteger(1, 9999),
                   name: selected[0].label,
                   isDefault: false,
-                  lastUpdated: Date.now().toString(),
+                  lastUpdated: new Date().toISOString(),
                   isNew: true,
                 }
               );
             }}
           />
-            <div id="error" className="text-red-400" hidden>
-              Please select an institution.
-            </div>
+            {institutionError && (
+              <div className="text-red-400">
+                Please select an institution.
+              </div>
+            )}
           </div>
           
           <div className="space-y-2">

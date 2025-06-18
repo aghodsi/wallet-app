@@ -6,11 +6,29 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  
+  /* Custom breakpoints */
+  --breakpoint-xs: 480px;
+}
+
+/* Prevent FOUC by setting system theme colors immediately */
+html {
+  /* Light theme as fallback */
+  background-color: oklch(1 0 0);
+  color: oklch(0.145 0 0);
+  
+  /* Dark theme for users with dark preference */
+  @media (prefers-color-scheme: dark) {
+    background-color: oklch(0.145 0 0);
+    color: oklch(0.985 0 0);
+    color-scheme: dark;
+  }
 }
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-background text-foreground;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
@@ -130,5 +148,27 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Extra small screen utilities */
+  @media (min-width: 480px) {
+    .xs\:inline {
+      display: inline;
+    }
+    .xs\:hidden {
+      display: none;
+    }
+  }
+  
+  /* Hide on extra small screens */
+  @media (max-width: 479px) {
+    .xs\:hidden {
+      display: inline;
+    }
+    .xs\:inline {
+      display: none;
+    }
   }
 }

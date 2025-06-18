@@ -81,6 +81,8 @@ export function TransactionCreation(props: TransactionCreationProps) {
   const [showCustomCurrency, setShowCustomCurrency] = useState(false);
   const [showDifferentPortfolio, setShowDifferentPortfolio] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [portfolioError, setPortfolioError] = useState(false);
+  const [assetError, setAssetError] = useState(false);
 
   const [emptyText, setEmptyText] = useState("No results found");
 
@@ -114,11 +116,11 @@ export function TransactionCreation(props: TransactionCreationProps) {
 
   const handleCreate = () => {
     if (!portfolioId) {
-      document.getElementById("portfolio-error")!.hidden = false;
+      setPortfolioError(true);
       return;
     }
     if (type !== "Deposit" && type !== "Withdraw" && !asset.value.trim()) {
-      document.getElementById("asset-error")!.hidden = false;
+      setAssetError(true);
       return;
     }
 
@@ -203,7 +205,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
               value={portfolioId.toString()}
               onValueChange={(value) => {
                 setPortfolioId(parseInt(value));
-                document.getElementById("portfolio-error")!.hidden = true;
+                setPortfolioError(false);
               }}
               required
             >
@@ -224,9 +226,11 @@ export function TransactionCreation(props: TransactionCreationProps) {
                 ))}
               </SelectContent>
             </Select>
-            <div id="portfolio-error" className="text-red-400" hidden>
-              Please select a portfolio.
-            </div>
+            {portfolioError && (
+              <div className="text-red-400">
+                Please select a portfolio.
+              </div>
+            )}
 
             <Label htmlFor="date-input">Transaction Date & Time</Label>
             <div className="flex gap-4">
@@ -304,13 +308,12 @@ export function TransactionCreation(props: TransactionCreationProps) {
                     onChange={(selected) => {
                       if (selected.length > 0) {
                         setAsset(selected[0]);
-                        document.getElementById("asset-error")!.hidden = true;
+                        setAssetError(false);
                       }
                     }}
                     maxSelected={1}
                     onMaxSelected={(maxLimit) => {
-                      document.getElementById("asset-error")!.hidden =
-                        maxLimit > 0;
+                      setAssetError(maxLimit === 0);
                       setEmptyText(
                         "You can only select one asset per transaction."
                       );
@@ -337,9 +340,11 @@ export function TransactionCreation(props: TransactionCreationProps) {
                       </p>
                     }
                   />
-                  <div id="asset-error" className="text-red-400" hidden>
-                    Please select an asset.
-                  </div>
+                  {assetError && (
+                    <div className="text-red-400">
+                      Please select an asset.
+                    </div>
+                  )}
                 </div>
 
                 {/* Currency Selection within Transaction Details */}
@@ -474,8 +479,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
                         value={targetPortfolioId.toString()}
                         onValueChange={(value) => {
                           setTargetPortfolioId(parseInt(value));
-                          document.getElementById("portfolio-error")!.hidden =
-                            true;
+                          setPortfolioError(false);
                         }}
                       >
                         <SelectTrigger>
