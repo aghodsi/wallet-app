@@ -22,7 +22,7 @@ export const transactionTable = mysqlTable('transaction', {
     date: varchar({ length: 200 }).notNull(),
     type: varchar({ length: 50, enum:["Buy", "Sell", "Dividend", "Deposit", "Withdraw"]}).notNull(), // e.g., 'buy', 'sell', 'dividend'
     asset: varchar({ length: 255 }).notNull(),
-    quantity: int('quantity').notNull(),
+    quantity: double('quantity').notNull(),
     price: double('price').notNull(),
     commision: double('commission').notNull(),
     recurrence: varchar({ length: 50 } ), // cron expression for recurring transactions

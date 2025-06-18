@@ -8,6 +8,7 @@ import {
   Settings,
   Currency,
   Clock,
+  Import,
   Moon,
   Sun,
   Monitor,
@@ -283,6 +284,13 @@ export function SearchComponent() {
               {!hasRealPortfolios && (
                 <div className="ml-auto text-xs text-muted-foreground">Requires portfolio</div>
               )}
+            </CommandItem>
+            <CommandItem onSelect={() => {
+              setOpen(false);
+              navigate('/import');
+            }}>
+              <Import className="mr-2 h-4 w-4" />
+              <span>Import</span>
             </CommandItem>
           </CommandGroup>
 

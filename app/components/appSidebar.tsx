@@ -6,6 +6,7 @@ import {
   Currency,
   FolderPlus,
   Home,
+  Import,
   Plus,
   Settings,
   Settings2,
@@ -86,6 +87,12 @@ const data = {
       url: "/recurring-transactions",
       icon: Clock,
       needsPortfolio: true,
+    },
+    {
+      name: "Import",
+      url: "/import",
+      icon: Import,
+      needsPortfolio: false,
     }
 
   ],

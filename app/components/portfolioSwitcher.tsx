@@ -37,6 +37,13 @@ export function PortfolioSwitcher({
 
   const isMac = useIsMac();
   
+  // Update activePortfolio when portfolios prop changes
+  useEffect(() => {
+    const selectedPortfolio = portfolios.find((p) => p.selected);
+    if (selectedPortfolio) {
+      setActivePortfolio(selectedPortfolio);
+    }
+  }, [portfolios]);
 
   if (!activePortfolio) {
     return null;
@@ -62,7 +69,7 @@ export function PortfolioSwitcher({
 
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, []);
+  }, [portfolios, portfolioDispatch]);
 
   return (
     <SidebarMenu>
@@ -96,7 +103,7 @@ export function PortfolioSwitcher({
             </DropdownMenuLabel>
             {portfolios.map((portfolio, index) => (
               <DropdownMenuItem
-                key={portfolio.name}
+                key={portfolio.id}
                 onClick={() => {
                   setActivePortfolio(portfolio);
                   portfolioDispatch({

@@ -1,7 +1,7 @@
 import type { PortfolioType } from "~/datatypes/portfolio";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { CurrencyType } from "~/datatypes/currency";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
@@ -116,13 +116,18 @@ export function PortfolioSettings({
     });
   };
 
+  // Use ref to track last processed fetcher data to prevent infinite loops
+  const lastProcessedDataRef = useRef<any>(null);
+
   // Handle fetcher response
   useEffect(() => {
-    if (fetcher.data) {
+    if (fetcher.data && fetcher.state === 'idle' && fetcher.data !== lastProcessedDataRef.current) {
+      lastProcessedDataRef.current = fetcher.data;
+      
       if (fetcher.data.ok) {
         toast.success("Portfolio settings updated successfully!");
         
-        // Update the portfolio in context
+        // Update the portfolio in context with current form values
         if (currentPortfolio && institution) {
           const updatedPortfolio: PortfolioType = {
             ...currentPortfolio,
@@ -143,7 +148,7 @@ export function PortfolioSettings({
         toast.error(fetcher.data.error || "Failed to update portfolio settings");
       }
     }
-  }, [fetcher.data, currentPortfolio, institution, name, currency, symbol, type, tags, portfolioDispatch]);
+  }, [fetcher.data, fetcher.state, currentPortfolio, institution, name, currency, symbol, type, tags, portfolioDispatch]);
 
   // Show disabled state when no real portfolios exist
   if (!hasRealPortfolios) {

@@ -19,6 +19,7 @@ export async function action({ request }: Route.ActionArgs) {
       };
     } else {
       // Create new portfolio
+      console.log("Creating new portfolio with data:", portfolioData);
       const createdPortfolio = await createPortfolio(portfolioData);
       return {
         ok: true,
