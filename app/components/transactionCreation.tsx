@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { Input } from "./ui/input";
 import MultipleSelector, { type Option } from "./ui/multiselect";
 import {
@@ -61,6 +61,14 @@ export function TransactionCreation(props: TransactionCreationProps) {
   const [targetPortfolioId, setTargetPortfolioId] = useState(initialPortfolioId);
   const [date, setDate] = useState<Date>(new Date());
   const [time, setTime] = useState("10:30:00");
+  const [mounted, setMounted] = useState(false);
+
+  // Initialize with current date/time only after component mounts
+  useEffect(() => {
+    setMounted(true);
+    setDate(new Date());
+    setTime("10:30:00");
+  }, []);
   const [type, setType] = useState<
     "Buy" | "Sell" | "Dividend" | "Deposit" | "Withdraw"
   >("Buy");
@@ -176,8 +184,10 @@ export function TransactionCreation(props: TransactionCreationProps) {
     // Reset form
     setPortfolioId(initialPortfolioId);
     setTargetPortfolioId(initialPortfolioId);
-    setDate(new Date());
-    setTime("10:30:00");
+    if (mounted) {
+      setDate(new Date());
+      setTime("10:30:00");
+    }
     setType("Buy");
     setAsset({} as Option);
     setQuantity(0);

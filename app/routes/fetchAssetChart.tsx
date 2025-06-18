@@ -9,17 +9,30 @@ interface LoaderArgs {
 function defineBestInterval(period1Date: Date, period2Date: Date): ValidInterval {
   let interval = "1d"
   const timeDifferenceInDays = Math.round((period2Date.getTime() - period1Date.getTime()) / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
-  if (timeDifferenceInDays <= 1) {
-    interval = "1m"; // 1 minute interval for very short periods
+  const timeDifferenceInHours = Math.round((period2Date.getTime() - period1Date.getTime()) / (1000 * 60 * 60)); // Convert milliseconds to hours
+  
+  // Yahoo Finance data availability constraints:
+  // 1m: last 7 days only
+  // 2m, 5m, 15m, 30m: last 60 days only  
+  // 60m, 90m: last 730 days only
+  // 1d: no limit
+  
+  const daysSinceNow = Math.round((new Date().getTime() - period1Date.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (timeDifferenceInHours <= 1 && daysSinceNow <= 7) {
+    interval = "1m"; // 1 minute interval for very short periods within last 7 days
   }
-  else if (timeDifferenceInDays > 1 && timeDifferenceInDays <= 3) {
-    interval = "5m"; // 5 minute interval for short periods
+  else if (timeDifferenceInDays <= 1 && daysSinceNow <= 60) {
+    interval = "5m"; // 5 minute interval for day-long periods within last 60 days
   }
-  else if (timeDifferenceInDays > 3 && timeDifferenceInDays <= 7) {
-    interval = "15m"; // 15 minute interval for periods up to a week
+  else if (timeDifferenceInDays > 1 && timeDifferenceInDays <= 3 && daysSinceNow <= 60) {
+    interval = "15m"; // 15 minute interval for short periods within last 60 days
   }
-  else if (timeDifferenceInDays > 7 && timeDifferenceInDays <= 30) {
-    interval = "60m"; // 60 minute interval for periods up to a month
+  else if (timeDifferenceInDays > 3 && timeDifferenceInDays <= 7 && daysSinceNow <= 60) {
+    interval = "30m"; // 30 minute interval for periods up to a week within last 60 days
+  }
+  else if (timeDifferenceInDays > 7 && timeDifferenceInDays <= 60 && daysSinceNow <= 730) {
+    interval = "60m"; // 60 minute interval for periods up to 2 months within last 2 years
   }
   // in all other cases, we will use daily interval
 
@@ -71,15 +84,46 @@ export async function loader({ request }: LoaderArgs) {
     try {
       if (period1Date < period2Date && (timeDifferenceMs / 60000) >= 15) {
         //only fetch data if the time difference is at least 15 minutes
+        console.log(`Attempting to fetch data with interval: ${interval} for period from ${period1Date.toISOString()} to ${period2Date.toISOString()}`);
+        
         const externalChartData = await getHistoricalData(
           query,
           period1Date,
           period2Date,
           interval as ValidInterval
         );
+        
         //save the external chart data to the database if needed
         if (!externalChartData) {
+          console.error(`No chart data returned for ${query} with interval ${interval}`);
           return { error: "No chart data found for the given query" };
+        }
+
+        // Check if we got meaningful data
+        if (!externalChartData.quotes || externalChartData.quotes.length === 0) {
+          console.error(`Empty quotes array returned for ${query} with interval ${interval}. Falling back to daily interval.`);
+          
+          // Fallback to daily interval if no data with requested interval
+          const fallbackData = await getHistoricalData(
+            query,
+            period1Date,
+            period2Date,
+            "1d"
+          );
+          
+          if (!fallbackData || !fallbackData.quotes || fallbackData.quotes.length === 0) {
+            return { error: "No chart data found even with daily interval fallback" };
+          }
+          
+          console.log(`Fallback successful: received ${fallbackData.quotes.length} data points with daily interval`);
+          // Use fallback data
+          externalChartData.quotes = fallbackData.quotes;
+          externalChartData.meta = fallbackData.meta;
+          if (fallbackData.events) {
+            externalChartData.events = fallbackData.events;
+          }
+        } else {
+          console.log(`Successfully fetched ${externalChartData.quotes.length} data points with interval ${interval}`);
         }
 
         externalChartData.events?.splits?.forEach((s) => {
@@ -117,15 +161,24 @@ export async function loader({ request }: LoaderArgs) {
           shortName: mostRecentAsset
             ? mostRecentAsset.shortName!
             : (externalChartData.meta as any).shortName || externalChartData.meta.symbol || "",
-          quotes: externalChartData.quotes.map((q) => ({
-            date: q.date.getTime().toString(), // convert to string for consistency.
-            high: q.high === null ? undefined : q.high,
-            low: q.low === null ? undefined : q.low,
-            open: q.open === null ? undefined : q.open,
-            close: q.close === null ? undefined : q.close,
-            volume: q.volume === null ? undefined : q.volume,
-            adjclose: q.adjclose === null ? undefined : q.adjclose,
-          })),
+          quotes: externalChartData.quotes
+            .filter((q) => {
+              // Filter out quotes with null/undefined/zero close prices which indicate invalid data
+              const hasValidClose = q.close !== null && q.close !== undefined && q.close > 0;
+              if (!hasValidClose) {
+                console.warn(`Filtering out invalid quote for ${query} on ${q.date}: close=${q.close}`);
+              }
+              return hasValidClose;
+            })
+            .map((q) => ({
+              date: q.date.getTime().toString(), // convert to string for consistency.
+              high: q.high === null ? undefined : q.high,
+              low: q.low === null ? undefined : q.low,
+              open: q.open === null ? undefined : q.open,
+              close: q.close === null ? undefined : q.close,
+              volume: q.volume === null ? undefined : q.volume,
+              adjclose: q.adjclose === null ? undefined : q.adjclose,
+            })),
           events: {
             // Convert dividends and splits to the expected format. Storing the date as a string for consistency.
             dividends: externalChartData.events?.dividends

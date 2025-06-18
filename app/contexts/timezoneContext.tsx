@@ -34,22 +34,34 @@ interface TimezoneProviderProps {
 }
 
 export function TimezoneProvider({ children }: TimezoneProviderProps) {
-  // Initialize with user's local timezone
-  const [selectedTimezone, setSelectedTimezone] = useState<string>(() => {
+  // Always start with UTC on server to prevent hydration mismatches
+  const [selectedTimezone, setSelectedTimezone] = useState<string>('UTC');
+  const [mounted, setMounted] = useState(false);
+
+  // Initialize timezone after component mounts (client-side only)
+  useEffect(() => {
+    setMounted(true);
+    
     // Try to load from localStorage first, fallback to system timezone
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('wallet-app-timezone');
-      if (stored) return stored;
+      if (stored) {
+        setSelectedTimezone(stored);
+      } else {
+        // Fallback to system timezone and save it
+        const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setSelectedTimezone(systemTimezone);
+        localStorage.setItem('wallet-app-timezone', systemTimezone);
+      }
     }
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  });
+  }, []);
 
-  // Save timezone to localStorage when it changes
+  // Save timezone to localStorage when it changes (but only after mount)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (mounted && typeof window !== 'undefined') {
       localStorage.setItem('wallet-app-timezone', selectedTimezone);
     }
-  }, [selectedTimezone]);
+  }, [selectedTimezone, mounted]);
 
   const setTimezone = useCallback((timezone: string) => {
     setSelectedTimezone(timezone);

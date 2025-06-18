@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useState, useEffect } from "react"
 import { Clock, Globe } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import {
@@ -18,6 +19,9 @@ import { useTimezone, COMMON_TIMEZONES } from "~/contexts/timezoneContext"
 export function TimezoneSelector() {
   const { selectedTimezone, setTimezone } = useTimezone()
   const [open, setOpen] = React.useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [currentTime, setCurrentTime] = useState('--:--')
+  const [systemTimezone, setSystemTimezone] = useState('UTC')
 
   // Find the current timezone info for display
   const currentTimezoneInfo = COMMON_TIMEZONES.find(tz => tz.value === selectedTimezone)
@@ -25,6 +29,7 @@ export function TimezoneSelector() {
 
   // Get current time in selected timezone for preview
   const getCurrentTimeInTimezone = () => {
+    if (!mounted) return '--:--'
     try {
       return new Date().toLocaleTimeString('en-US', {
         timeZone: selectedTimezone,
@@ -37,6 +42,24 @@ export function TimezoneSelector() {
     }
   }
 
+  useEffect(() => {
+    setMounted(true)
+    setSystemTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    const updateTime = () => {
+      setCurrentTime(getCurrentTimeInTimezone())
+    }
+
+    updateTime() // Initial update
+    const interval = setInterval(updateTime, 1000) // Update every second
+
+    return () => clearInterval(interval)
+  }, [mounted, selectedTimezone])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -48,7 +71,7 @@ export function TimezoneSelector() {
           <Clock className="h-3 w-3" />
           <div className="flex flex-col items-start">
             <span className="font-medium">{displayLabel}</span>
-            <span className="text-muted-foreground">{getCurrentTimeInTimezone()}</span>
+            <span className="text-muted-foreground">{currentTime}</span>
           </div>
         </Button>
       </PopoverTrigger>
@@ -93,12 +116,12 @@ export function TimezoneSelector() {
           <div className="text-xs text-muted-foreground">
             <div className="flex justify-between">
               <span>Current time:</span>
-              <span className="font-mono">{getCurrentTimeInTimezone()}</span>
+              <span className="font-mono">{currentTime}</span>
             </div>
             <div className="flex justify-between mt-1">
               <span>System timezone:</span>
               <span className="font-mono text-xs truncate max-w-[120px]">
-                {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                {systemTimezone}
               </span>
             </div>
           </div>
