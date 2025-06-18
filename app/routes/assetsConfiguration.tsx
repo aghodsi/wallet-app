@@ -74,12 +74,29 @@ export async function loader() {
         }
       }
       
-      // Use the most recent lastUpdated timestamp
-      const mostRecentUpdate = Math.max(...groupedAsset.lastUpdatedTimestamps);
+      // Use the newest quote date as the "last updated" time
+      const lastQuoteDate = newestDate;
       
-      // Calculate staleness (older than 24 hours)
+      // Calculate staleness based on the newest quote date
       const now = Date.now();
-      const isStale = (now - mostRecentUpdate) > (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+      let isStale = true;
+      
+      if (lastQuoteDate) {
+        const currentDate = new Date(now);
+        const lastQuoteDateTime = new Date(lastQuoteDate);
+        const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        
+        // Check if it's a weekday (Monday to Friday)
+        const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+        
+        if (isWeekday) {
+          // On weekdays, consider stale if older than 1 hour
+          isStale = (now - lastQuoteDate) > (1 * 60 * 60 * 1000); // 1 hour in milliseconds
+        } else {
+          // On weekends, consider stale if older than 24 hours
+          isStale = (now - lastQuoteDate) > (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+        }
+      }
       
       return {
         id: groupedAsset.symbol, // Use symbol as unique ID
@@ -91,7 +108,7 @@ export async function loader() {
         oldestQuoteDate: oldestDate,
         newestQuoteDate: newestDate,
         isStale,
-        lastUpdatedTimestamp: mostRecentUpdate,
+        lastUpdatedTimestamp: lastQuoteDate, // Use the newest quote date as last updated
         entryCount: groupedAsset.allQuotes.length
       };
     });
