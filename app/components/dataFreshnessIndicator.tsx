@@ -1,6 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import type { AssetType } from "~/datatypes/asset";
 import { userPortfolios } from "~/stateManagement/portfolioContext";
+import { useTimezone } from "~/contexts/timezoneContext";
 import { useMemo } from "react";
 
 // Hook to get all unique asset symbols from all portfolios

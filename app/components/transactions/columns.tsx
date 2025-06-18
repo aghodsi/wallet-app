@@ -11,6 +11,7 @@ import { Badge } from "~/components/ui/badge"
 import { cronToNaturalLanguage } from "~/lib/cronUtils"
 import { convertTextToIcon } from "~/lib/iconHelper"
 import { convertCurrency, formatCurrency } from "~/lib/currencyUtils"
+import { DateCell } from "./dateCell"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,10 +75,7 @@ export function createColumns(options?: ColumnsOptions): ColumnDef<TransactionTy
     },
     cell: ({ row }) => {
       const dateValue = row.getValue("date") as string
-      // Parse epoch timestamp - if it's a string, convert to number first
-      const timestamp = typeof dateValue === 'string' ? parseInt(dateValue) : dateValue
-      const date = new Date(timestamp)
-      return <div className="font-medium">{date.toLocaleDateString()}</div>
+      return <DateCell dateValue={dateValue} />
     },
   },
   ...(isShowingAllPortfolios ? [{

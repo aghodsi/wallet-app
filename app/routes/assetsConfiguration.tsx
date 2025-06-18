@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { DateTimeDisplay } from "~/components/dateTimeDisplay";
 
 export async function loader() {
   try {
@@ -187,27 +188,13 @@ export default function AssetsConfiguration({ loaderData }: { loaderData: { asse
                       <TableCell>{asset.exchangeName || "N/A"}</TableCell>
                       <TableCell>{asset.currency}</TableCell>
                       <TableCell>
-                        {asset.oldestQuoteDate ? (
-                          <div className="text-sm">
-                            {formatDateTime(asset.oldestQuoteDate)}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">No data</span>
-                        )}
+                        <DateTimeDisplay timestamp={asset.oldestQuoteDate} />
                       </TableCell>
                       <TableCell>
-                        {asset.newestQuoteDate ? (
-                          <div className="text-sm">
-                            {formatDateTime(asset.newestQuoteDate)}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">No data</span>
-                        )}
+                        <DateTimeDisplay timestamp={asset.newestQuoteDate} />
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {formatDateTime(asset.lastUpdatedTimestamp)}
-                        </div>
+                        <DateTimeDisplay timestamp={asset.lastUpdatedTimestamp} />
                       </TableCell>
                       <TableCell>
                         <Badge 

@@ -11,6 +11,7 @@ import {
   Plus,
   Settings,
   Settings2,
+  TrendingUp,
   Wallet,
 } from "lucide-react"
 
@@ -28,6 +29,7 @@ import { NavComponentCollapsable } from "./navComponentCollapsable"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
 import { useDialogContext } from "~/contexts/transactionDialogContext"
 import { DataFreshnessIndicator } from "./dataFreshnessIndicator"
+import { TimezoneSelector } from "./timezoneSelector"
 
 const data = {
   user: {
@@ -60,6 +62,12 @@ const data = {
       name: "Portfolio Overview",
       url: "/portfolio",
       icon: ChartNoAxesCombined,
+      needsPortfolio: true,
+    },
+    {
+      name: "Assets",
+      url: "/assets",
+      icon: TrendingUp,
       needsPortfolio: true,
     },
     {
@@ -172,6 +180,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavComponentCollapsable items={data.settingsNavItems} title={"Configuration"} /> */}
       </SidebarContent>
       <SidebarFooter>
+        <TimezoneSelector />
         <DataFreshnessIndicator />
         {/* <NavUser user={data.user} /> */}
       </SidebarFooter>

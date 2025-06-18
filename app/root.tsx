@@ -25,6 +25,7 @@ import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
 import { CurrencyDisplayProvider } from "./contexts/currencyDisplayContext";
+import { TimezoneProvider } from "./contexts/timezoneContext";
 import type { PortfolioType } from "./datatypes/portfolio";
 import { cronService } from "./services/cronService";
 import { ThemeProvider } from "./components/theme-provider";
@@ -207,11 +208,13 @@ export default function App({ loaderData }: Route.ComponentProps) {
         <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
           <PortfolioProvider initialPortfolios={portfolios}>
             <CurrencyDisplayProvider>
-              <TransactionDialogProvider currencies={currencies} institutions={institutions}>
-                <SidebarLayout>
-                  <Outlet />
-                </SidebarLayout>
-              </TransactionDialogProvider>
+              <TimezoneProvider>
+                <TransactionDialogProvider currencies={currencies} institutions={institutions}>
+                  <SidebarLayout>
+                    <Outlet />
+                  </SidebarLayout>
+                </TransactionDialogProvider>
+              </TimezoneProvider>
             </CurrencyDisplayProvider>
           </PortfolioProvider>
         </ThemeProvider>
