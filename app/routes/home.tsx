@@ -16,9 +16,9 @@ import { Toaster } from "~/components/ui/sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Separator } from "~/components/ui/separator";
-import { Skeleton } from "~/components/ui/skeleton";
-import { PlusCircle, TrendingUp, TrendingDown, PiggyBank, Target, Wallet, ArrowRight, BarChart3, DollarSign, Activity, Coins } from "lucide-react";
+import { PlusCircle, TrendingUp, TrendingDown, PiggyBank, Target, Wallet, BarChart3, DollarSign, Activity, Coins } from "lucide-react";
 import { Treemap, ResponsiveContainer, Cell, Tooltip } from "recharts";
+import { convertCurrency, formatCurrency as formatCurrencyUtil, getDefaultCurrency } from "~/lib/currencyUtils";
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -32,7 +32,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const currencies = await fetchCurrencies();
   const transactions = await fetchAllTransactions();
 
-  const institudionsWithType = institutions.map((i) => ({
+  const institutionsWithType = institutions.map((i) => ({
     id: i.id,
     name: i.name,
     isDefault: i.isDefault || false,
@@ -49,14 +49,21 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })) as CurrencyType[];
 
   // Transform transactions to proper type
-  const transactionsWithType = transactions.map((t) => ({
+  const transactionsWithType = transactions.map((t: any) => ({
     ...t,
     asset: {
-      symbol: t.asset || "CASH",
+      symbol: (typeof t.asset === 'string' ? t.asset : t.asset?.symbol) || "CASH",
       isFetchedFromApi: false,
     },
-    isHousekeeping: !!t.isHouskeeping,
+    isHousekeeping: !!t.isHousekeeping,
     isCreatedByUser: true,
+    commision: t.commision || 0,
+    tax: t.tax || 0,
+    currency: t.currency ? currencieswithType.find((c: CurrencyType) => c.id === t.currency) : undefined,
+    tags: t.tags || "",
+    notes: t.notes || undefined,
+    duplicateOf: t.duplicateOf || null,
+    recurrenceOf: t.recurrenceOf || null,
   })) as TransactionType[];
 
   // Get unique asset symbols for fetching asset data
@@ -80,7 +87,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 
   return {
-    institutions: institudionsWithType,
+    institutions: institutionsWithType,
     currencies: currencieswithType,
     transactions: transactionsWithType,
     assets,
@@ -134,7 +141,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     }
   }, [fetcher.state, fetcher.data]);
 
-  // Calculate overall portfolio statistics
+  // Get the default currency for display
+  const defaultCurrency = getDefaultCurrency(loaderData.currencies);
+  
+  // Function to format currency values in the default currency
+  const formatCurrencyInDefault = (amount: number) => {
+    return formatCurrencyUtil(amount, defaultCurrency);
+  };
+
+  // Calculate overall portfolio statistics with currency conversion
   const portfolioStats = (() => {
     if (portfolios.length === 0) return null;
 
@@ -143,25 +158,90 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       portfolioIds.includes(t.portfolioId) && !t.isHousekeeping
     );
 
+    // Calculate net position for each asset
+    const assetPositions = new Map<string, { quantity: number, totalCost: number }>();
+    
+    relevantTransactions.forEach(transaction => {
+      const symbol = transaction.asset.symbol;
+      const current = assetPositions.get(symbol) || { quantity: 0, totalCost: 0 };
+      
+      // Convert transaction amounts to default currency
+      let transactionCostInDefault = transaction.quantity * transaction.price;
+      if (transaction.currency && transaction.currency.id !== defaultCurrency.id) {
+        transactionCostInDefault = convertCurrency(
+          transactionCostInDefault,
+          transaction.currency,
+          defaultCurrency
+        );
+      }
+      
+      if (transaction.type === "Buy" || transaction.type === "Deposit") {
+        current.quantity += transaction.quantity;
+        current.totalCost += transactionCostInDefault;
+      } else if (transaction.type === "Sell" || transaction.type === "Withdraw") {
+        const avgCost = current.quantity > 0 ? current.totalCost / current.quantity : (transactionCostInDefault / transaction.quantity);
+        
+        current.quantity -= transaction.quantity;
+        current.totalCost -= (transaction.quantity * avgCost);
+      }
+      
+      assetPositions.set(symbol, current);
+    });
+
     // Calculate totals
-    const totalInvestment = relevantTransactions
-      .filter(t => t.type === "Buy" || t.type === "Deposit")
-      .reduce((sum, t) => sum + (t.quantity * t.price), 0);
+    const totalInvestment = Array.from(assetPositions.values())
+      .filter(pos => pos.quantity > 0)
+      .reduce((sum, pos) => sum + pos.totalCost, 0);
 
-    const totalWithdrawals = relevantTransactions
-      .filter(t => t.type === "Sell" || t.type === "Withdraw")
-      .reduce((sum, t) => sum + (t.quantity * t.price), 0);
+    // Convert commissions and taxes to default currency
+    const totalCommissions = relevantTransactions.reduce((sum, t) => {
+      let commissionInDefault = t.commision || 0;
+      if (t.currency && t.currency.id !== defaultCurrency.id && commissionInDefault > 0) {
+        commissionInDefault = convertCurrency(commissionInDefault, t.currency, defaultCurrency);
+      }
+      return sum + commissionInDefault;
+    }, 0);
 
-    const totalCommissions = relevantTransactions.reduce((sum, t) => sum + (t.commision || 0), 0);
-    const totalTaxes = relevantTransactions.reduce((sum, t) => sum + (t.tax || 0), 0);
+    const totalTaxes = relevantTransactions.reduce((sum, t) => {
+      let taxInDefault = t.tax || 0;
+      if (t.currency && t.currency.id !== defaultCurrency.id && taxInDefault > 0) {
+        taxInDefault = convertCurrency(taxInDefault, t.currency, defaultCurrency);
+      }
+      return sum + taxInDefault;
+    }, 0);
 
-    // Mock current value calculation (in real app, would use current prices)
-    const currentValue = totalInvestment * 1.12; // Assume 12% overall growth
+    // Calculate current value using latest asset prices
+    let currentValue = 0;
+    let cashValue = 0;
+    
+    assetPositions.forEach((position, symbol) => {
+      if (position.quantity > 0) {
+        if (symbol === "CASH" || symbol === "Cash") {
+          cashValue += position.totalCost;
+          currentValue += position.totalCost;
+        } else {
+          const asset = loaderData.assets.find(a => a.symbol === symbol);
+          let currentPrice = position.totalCost / position.quantity; // fallback to average cost
+          
+          if (asset?.quotes) {
+            try {
+              const quotes = typeof asset.quotes === 'string' ? JSON.parse(asset.quotes) : asset.quotes;
+              if (Array.isArray(quotes) && quotes.length > 0) {
+                const latestQuote = quotes[quotes.length - 1];
+                currentPrice = latestQuote?.close || latestQuote?.adjclose || currentPrice;
+              }
+            } catch (e) {
+              console.warn(`Error parsing quotes for ${symbol}:`, e);
+            }
+          }
+          
+          currentValue += position.quantity * currentPrice;
+        }
+      }
+    });
+
     const totalGainLoss = currentValue - totalInvestment;
     const totalGainLossPercentage = totalInvestment > 0 ? (totalGainLoss / totalInvestment) * 100 : 0;
-
-    // Calculate liquidity (approximate cash positions)
-    const cashValue = currentValue * 0.15; // Assume 15% in cash/liquid assets
     const investedValue = currentValue - cashValue;
 
     return {
@@ -177,7 +257,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     };
   })();
 
-  // Generate treemap data
+  // Generate treemap data with currency conversion
   const treemapData: TreemapData[] = (() => {
     if (!portfolioStats) return [];
 
@@ -186,22 +266,64 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       portfolioIds.includes(t.portfolioId) && !t.isHousekeeping
     );
 
-    // Group by assets and calculate current values
-    const assetMap = new Map<string, number>();
+    // Calculate net positions for each asset (same logic as portfolio stats)
+    const assetPositions = new Map<string, { quantity: number, totalCost: number }>();
     
     relevantTransactions.forEach(transaction => {
       const symbol = transaction.asset.symbol;
-      const value = transaction.quantity * transaction.price;
+      const current = assetPositions.get(symbol) || { quantity: 0, totalCost: 0 };
+      
+      // Convert transaction amounts to default currency
+      let transactionCostInDefault = transaction.quantity * transaction.price;
+      if (transaction.currency && transaction.currency.id !== defaultCurrency.id) {
+        transactionCostInDefault = convertCurrency(
+          transactionCostInDefault,
+          transaction.currency,
+          defaultCurrency
+        );
+      }
       
       if (transaction.type === "Buy" || transaction.type === "Deposit") {
-        assetMap.set(symbol, (assetMap.get(symbol) || 0) + value);
+        current.quantity += transaction.quantity;
+        current.totalCost += transactionCostInDefault;
       } else if (transaction.type === "Sell" || transaction.type === "Withdraw") {
-        assetMap.set(symbol, (assetMap.get(symbol) || 0) - value);
+        const avgCost = current.quantity > 0 ? current.totalCost / current.quantity : (transactionCostInDefault / transaction.quantity);
+        current.quantity -= transaction.quantity;
+        current.totalCost -= (transaction.quantity * avgCost);
+      }
+      
+      assetPositions.set(symbol, current);
+    });
+
+    // Calculate current values using latest prices
+    const assetCurrentValues = new Map<string, number>();
+    
+    assetPositions.forEach((position, symbol) => {
+      if (position.quantity > 0) {
+        if (symbol === "CASH" || symbol === "Cash") {
+          assetCurrentValues.set(symbol, position.totalCost);
+        } else {
+          const asset = loaderData.assets.find(a => a.symbol === symbol);
+          let currentPrice = position.quantity > 0 ? position.totalCost / position.quantity : 0;
+          
+          if (asset?.quotes) {
+            try {
+              const quotes = typeof asset.quotes === 'string' ? JSON.parse(asset.quotes) : asset.quotes;
+              if (Array.isArray(quotes) && quotes.length > 0) {
+                const latestQuote = quotes[quotes.length - 1];
+                currentPrice = latestQuote?.close || latestQuote?.adjclose || currentPrice;
+              }
+            } catch (e) {
+              console.warn(`Error parsing quotes for ${symbol}:`, e);
+            }
+          }
+          
+          assetCurrentValues.set(symbol, position.quantity * currentPrice);
+        }
       }
     });
 
     // Convert to treemap format with ShadCN-inspired colors
-    // Using explicit colors that match ShadCN's chart palette
     const colors = [
       '#e11d48', // chart-1 equivalent (red)
       '#06b6d4', // chart-2 equivalent (cyan)
@@ -220,7 +342,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       '#06b6d4'  // cyan
     ];
 
-    return Array.from(assetMap.entries())
+    return Array.from(assetCurrentValues.entries())
       .filter(([_, value]) => value > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 15) // Show top 15 assets
@@ -241,21 +363,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
         return {
           name: symbol,
-          value: value * 1.12, // Apply growth factor
+          value: value,
           fill: colors[index % colors.length],
           type,
         };
       });
   })();
-
-  const formatCurrency = (amount: number, currency = "USD") => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   if (portfolios.length === 0) {
     // No portfolios - show invitation to create one
@@ -373,7 +486,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Card className="p-3 shadow-lg border">
           <div className="space-y-1">
             <p className="font-semibold">{data.name}</p>
-            <p className="text-sm">{formatCurrency(data.value)}</p>
+            <p className="text-sm">{formatCurrencyInDefault(data.value)}</p>
             <p className="text-sm text-muted-foreground">{percentage}% of total</p>
             <Badge variant="outline" className="text-xs">
               {data.type.toUpperCase()}
@@ -399,7 +512,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <h1 className="text-3xl font-bold tracking-tight">Portfolio Dashboard</h1>
               <p className="text-muted-foreground">
                 {portfolios.length} portfolio{portfolios.length > 1 ? 's' : ''} • 
-                Total value {portfolioStats ? formatCurrency(portfolioStats.currentValue) : '$0'}
+                Total value {portfolioStats ? formatCurrencyInDefault(portfolioStats.currentValue) : formatCurrencyInDefault(0)}
               </p>
             </div>
           </div>
@@ -414,17 +527,17 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(portfolioStats.currentValue)}</div>
+                <div className="text-2xl font-bold">{formatCurrencyInDefault(portfolioStats.currentValue)}</div>
                 <div className="flex items-center pt-1">
                   {portfolioStats.totalGainLoss >= 0 ? (
                     <Badge variant="secondary" className="text-green-600">
                       <TrendingUp className="mr-1 h-3 w-3" />
-                      +{formatCurrency(portfolioStats.totalGainLoss)}
+                      +{formatCurrencyInDefault(portfolioStats.totalGainLoss)}
                     </Badge>
                   ) : (
                     <Badge variant="secondary" className="text-red-600">
                       <TrendingDown className="mr-1 h-3 w-3" />
-                      {formatCurrency(portfolioStats.totalGainLoss)}
+                      {formatCurrencyInDefault(portfolioStats.totalGainLoss)}
                     </Badge>
                   )}
                   <span className="ml-2 text-xs text-muted-foreground">
@@ -440,7 +553,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(portfolioStats.totalInvestment)}</div>
+                <div className="text-2xl font-bold">{formatCurrencyInDefault(portfolioStats.totalInvestment)}</div>
                 <p className="text-xs text-muted-foreground pt-1">
                   Principal amount invested
                 </p>
@@ -453,7 +566,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 <PiggyBank className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(portfolioStats.cashValue)}</div>
+                <div className="text-2xl font-bold">{formatCurrencyInDefault(portfolioStats.cashValue)}</div>
                 <p className="text-xs text-muted-foreground pt-1">
                   {((portfolioStats.cashValue / portfolioStats.currentValue) * 100).toFixed(1)}% of total portfolio
                 </p>
@@ -466,7 +579,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(portfolioStats.investedValue)}</div>
+                <div className="text-2xl font-bold">{formatCurrencyInDefault(portfolioStats.investedValue)}</div>
                 <p className="text-xs text-muted-foreground pt-1">
                   {((portfolioStats.investedValue / portfolioStats.currentValue) * 100).toFixed(1)}% in active investments
                 </p>

@@ -13,10 +13,7 @@ export default [
     route("/import", "routes/import.tsx"),
     route("/searchSymbol", "routes/searchSymbol.tsx"),
     route("/fetchAssetChart", "routes/fetchAssetChart.tsx"),
-    route("/calendar-test", "routes/calendar-test.tsx"),
-    route("/test-data", "routes/test-data.tsx"),
     route("/api/transactions/:id?", "routes/api.transactions.tsx"),
     route("/api/currencies", "routes/api.currencies.tsx"),
     route("/api/import", "routes/api.import.tsx"),
-    route("/api/testData", "routes/api.testData.tsx"),
 ] satisfies RouteConfig;
