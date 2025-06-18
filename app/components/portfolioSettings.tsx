@@ -19,6 +19,7 @@ import MultipleSelector from "./ui/multiselect";
 import { toast } from "sonner";
 import { Toaster } from "./ui/sonner";
 import { userPortfolios, usePortfolioDispatch } from "~/stateManagement/portfolioContext";
+import { useDialogContext } from "~/contexts/transactionDialogContext";
 
 type PortfolioSettingsProps = {
   institutions: InstitutionType[];
@@ -39,9 +40,13 @@ export function PortfolioSettings({
   const contextPortfolios = userPortfolios();
   const portfolioDispatch = usePortfolioDispatch();
   const fetcher = useFetcher();
+  const { openPortfolioDialog } = useDialogContext();
   
   // Find the currently selected portfolio from context
   const currentPortfolio = contextPortfolios.find(p => p.selected);
+  
+  // Check if there are any real portfolios (excluding "All" portfolio with id -1)
+  const hasRealPortfolios = contextPortfolios.some(p => p.id !== -1);
 
   // State for form fields
   const [name, setName] = useState("");
@@ -139,6 +144,33 @@ export function PortfolioSettings({
       }
     }
   }, [fetcher.data, currentPortfolio, institution, name, currency, symbol, type, tags, portfolioDispatch]);
+
+  // Show disabled state when no real portfolios exist
+  if (!hasRealPortfolios) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Portfolio Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-2">No Portfolios Available</h3>
+              <p className="text-muted-foreground mb-4">
+                You need to create at least one portfolio before you can access portfolio settings.
+              </p>
+              <Button 
+                onClick={openPortfolioDialog}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Create Your First Portfolio
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Special case for "All" portfolio (id === -1)
   if (!currentPortfolio || currentPortfolio.id === -1) {

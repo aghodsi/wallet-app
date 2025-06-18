@@ -31,17 +31,50 @@ import { useNavigate } from "react-router";
 import { useDialogContext } from "~/contexts/transactionDialogContext";
 import { useTheme } from "~/components/theme-provider";
 import { formatDate } from "~/lib/dateUtils";
+import { AssetDetailSheet } from "~/components/assetDetailSheet";
+import type { AssetType } from "~/datatypes/asset";
+import { useQuery } from "@tanstack/react-query";
 
 export function SearchComponent() {
   const [open, setOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<AssetType | null>(null);
+  const [isAssetSheetOpen, setIsAssetSheetOpen] = useState(false);
+  const [selectedAssetSymbol, setSelectedAssetSymbol] = useState<string>("");
   const isMac = useIsMac();
   const navigate = useNavigate();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
   const { setTheme } = useTheme();
   const portfolios = userPortfolios();
   
+  // Check if there are any real portfolios (excluding "All" portfolio with id -1)
+  const hasRealPortfolios = portfolios.some(p => p.id !== -1);
+  
   // Use useTransactions hook with portfolioId -1 to get all transactions
   const { data: transactions, isLoading: isTransactionsLoading } = useTransactions(-1);
+
+  // Fetch asset data when an asset is selected
+  const { data: assetData, isLoading: isAssetLoading } = useQuery({
+    queryKey: ["assetFetch", selectedAssetSymbol],
+    queryFn: async () => {
+      if (!selectedAssetSymbol) return null;
+      const res = await fetch("/fetchAssetChart?q=" + selectedAssetSymbol);
+      if (!res.ok) {
+        throw new Error(`Error fetching asset data for ${selectedAssetSymbol}: ${res.statusText}`);
+      }
+      const resJson = await res.json();
+      return resJson as AssetType;
+    },
+    enabled: !!selectedAssetSymbol,
+    staleTime: 15 * 60 * 1000, // 15 minutes
+  });
+
+  // Update selectedAsset when assetData changes
+  React.useEffect(() => {
+    if (assetData) {
+      setSelectedAsset(assetData);
+      setIsAssetSheetOpen(true);
+    }
+  }, [assetData]);
 
   // Extract unique assets from transactions
   const assets = React.useMemo(() => {
@@ -83,6 +116,11 @@ export function SearchComponent() {
     navigate(`/transactions?id=${transactionId}`);
   };
 
+  const handleAssetSelect = (assetSymbol: string) => {
+    setOpen(false);
+    setSelectedAssetSymbol(assetSymbol);
+  };
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -97,7 +135,7 @@ export function SearchComponent() {
 
   return (
     <>
-      <Button variant="ghost" className="flex items-center justify-between w-full" onClick={() => setOpen(true)}>
+      <Button variant="outline" className="flex items-center justify-between w-full hover:bg-accent hover:text-accent-foreground" onClick={() => setOpen(true)}>
         <div className="flex items-center gap-2">
           <span>Search...</span>
         </div>
@@ -121,9 +159,15 @@ export function SearchComponent() {
               <Plus className="mr-2 h-4 w-4" />
               <span>Create Portfolio</span>
             </CommandItem>
-            <CommandItem onSelect={() => handleAction('create-transaction')}>
+            <CommandItem 
+              onSelect={hasRealPortfolios ? () => handleAction('create-transaction') : undefined}
+              disabled={!hasRealPortfolios}
+            >
               <ArrowUpDown className="mr-2 h-4 w-4" />
               <span>Create Transaction</span>
+              {!hasRealPortfolios && (
+                <div className="ml-auto text-xs text-muted-foreground">Requires portfolio</div>
+              )}
             </CommandItem>
           </CommandGroup>
 
@@ -185,9 +229,15 @@ export function SearchComponent() {
           <CommandGroup heading="Assets">
             {assets.length > 0 ? (
               assets.map((asset) => (
-                <CommandItem key={asset}>
+                <CommandItem 
+                  key={asset} 
+                  onSelect={() => handleAssetSelect(asset)}
+                >
                   <Coins className="mr-2 h-4 w-4" />
                   <span>{asset}</span>
+                  {isAssetLoading && selectedAssetSymbol === asset && (
+                    <div className="ml-auto text-xs text-muted-foreground">Loading...</div>
+                  )}
                 </CommandItem>
               ))
             ) : (
@@ -201,12 +251,18 @@ export function SearchComponent() {
 
           {/* Configuration Section */}
           <CommandGroup heading="Configuration">
-            <CommandItem onSelect={() => {
-              setOpen(false);
-              navigate('/portfolio-settings');
-            }}>
+            <CommandItem 
+              onSelect={hasRealPortfolios ? () => {
+                setOpen(false);
+                navigate('/portfolio-settings');
+              } : undefined}
+              disabled={!hasRealPortfolios}
+            >
               <Settings className="mr-2 h-4 w-4" />
               <span>Portfolio Settings</span>
+              {!hasRealPortfolios && (
+                <div className="ml-auto text-xs text-muted-foreground">Requires portfolio</div>
+              )}
             </CommandItem>
             <CommandItem onSelect={() => {
               setOpen(false);
@@ -215,12 +271,18 @@ export function SearchComponent() {
               <Currency className="mr-2 h-4 w-4" />
               <span>Currency Settings</span>
             </CommandItem>
-            <CommandItem onSelect={() => {
-              setOpen(false);
-              navigate('/recurringTransactions');
-            }}>
+            <CommandItem 
+              onSelect={hasRealPortfolios ? () => {
+                setOpen(false);
+                navigate('/recurring-transactions');
+              } : undefined}
+              disabled={!hasRealPortfolios}
+            >
               <Clock className="mr-2 h-4 w-4" />
               <span>Recurring Transactions</span>
+              {!hasRealPortfolios && (
+                <div className="ml-auto text-xs text-muted-foreground">Requires portfolio</div>
+              )}
             </CommandItem>
           </CommandGroup>
 
@@ -252,6 +314,13 @@ export function SearchComponent() {
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+
+      <AssetDetailSheet
+        open={isAssetSheetOpen}
+        onOpenChange={setIsAssetSheetOpen}
+        asset={selectedAsset}
+        transactions={transactions || []}
+      />
     </>
   );
 }

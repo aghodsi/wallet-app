@@ -54,6 +54,7 @@ export async function loader({ request }: LoaderArgs) {
       if (!url.searchParams.get("period1")) {
         // if period1 is not provided, we will use the last updated date to fetch new data since last update
         console.log(`Using last updated date from the most recent asset: ${lastUpdated}`);
+        console.log(`Last entry in the database: ${mostRecentAsset.symbol}, last updated: ${lastUpdated.toLocaleDateString()}`);
         period1 = lastUpdated.getTime().toString();
       }
     }

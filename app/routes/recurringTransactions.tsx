@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { type TransactionType } from "~/datatypes/transaction"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
 import { fetchRecurringTransactions, fetchCronRunsForTransaction } from "~/db/actions"
-import { useTransactionDialog } from "~/contexts/transactionDialogContext"
+import { useTransactionDialog, useDialogContext } from "~/contexts/transactionDialogContext"
 import { useAllTransactions } from "~/hooks/useTransactions"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { Badge } from "~/components/ui/badge"
@@ -71,9 +71,13 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
   const portfolios = userPortfolios()
   const selectedPortfolio = portfolios.find(p => p.selected)
   const { openDialog } = useTransactionDialog()
+  const { openPortfolioDialog } = useDialogContext()
   const [isUpdating, setIsUpdating] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<RecurringTransactionWithRuns | null>(null)
   const [showRelatedDialog, setShowRelatedDialog] = useState(false)
+  
+  // Check if there are any real portfolios (excluding "All" portfolio with id -1)
+  const hasRealPortfolios = portfolios.some(p => p.id !== -1)
   
   // Use TanStack Query to fetch all transactions for filtering
   const { data: allTransactions, isLoading: isLoadingAllTransactions } = useAllTransactions()
@@ -220,6 +224,50 @@ export default function RecurringTransactions({ loaderData }: { loaderData: any 
         <div className="flex items-center justify-center h-64">
           <div className="text-lg text-red-600">{error}</div>
         </div>
+      </main>
+    )
+  }
+
+  // Show disabled state when no real portfolios exist
+  if (!hasRealPortfolios) {
+    return (
+      <main className="pt-16 p-4 container mx-auto">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+              <Clock className="h-6 w-6 sm:h-8 sm:w-8" />
+              Recurring Transactions
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              View and manage transactions with recurring schedules
+            </p>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>No Portfolios Available</CardTitle>
+            <CardDescription>
+              You need to create at least one portfolio before you can manage recurring transactions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center py-8">
+              <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Create Your First Portfolio</h3>
+              <p className="text-muted-foreground mb-4">
+                Recurring transactions are associated with portfolios. Start by creating a portfolio to enable this feature.
+              </p>
+              <Button 
+                onClick={openPortfolioDialog}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Portfolio
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     )
   }
