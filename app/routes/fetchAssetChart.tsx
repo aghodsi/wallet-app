@@ -1,6 +1,7 @@
 import { getHistoricalData, type ValidInterval } from "~/api/fetcherYahoo";
 import { createAsset, getAllAssetBySymbolOrderedDesc } from "~/db/actions";
 import type { AssetType } from "~/datatypes/asset";
+import { shouldFetchData, getMarketStatus, isMarketOpen, isTradingDay } from "~/lib/tradingHours";
 
 interface LoaderArgs {
   request: Request;
@@ -59,12 +60,37 @@ export async function loader({ request }: LoaderArgs) {
     // and period1 is not provided in the query params (otherwise, this is a specialized request  )
     let mostRecentAsset =
       assetData && assetData.length > 0 ? assetData[0] : null;
+    
+    // Check if we should fetch data based on trading hours and market conditions
+    let shouldProceedWithFetch = true;
+    let fetchDecision: { shouldFetch: boolean; reason: string; nextFetchTime?: Date } = { shouldFetch: true, reason: 'No previous data' };
+    
     if (mostRecentAsset) {
       // there is already some chart data in the database. Get the most recent entry
       console.log(`Most recent asset found: ${mostRecentAsset.symbol}, last updated: ${mostRecentAsset.lastUpdated}`);
       // the lastUpdate field is saved as a string, but is in milliseconds, so we can parse it as an integer
       const lastUpdated = new Date(parseInt(mostRecentAsset.lastUpdated));
-      if (!url.searchParams.get("period1")) {
+      
+      // Check trading hours and market conditions
+      const forceRefresh = url.searchParams.get("force") === "true";
+      const exchangeName = mostRecentAsset.exchangeName || '';
+      const timezone = mostRecentAsset.timezone || undefined;
+      
+      fetchDecision = shouldFetchData(
+        exchangeName,
+        timezone,
+        lastUpdated,
+        forceRefresh
+      );
+      
+      console.log(`Trading hours check: ${fetchDecision.reason}`);
+      console.log(`Market status: ${getMarketStatus(exchangeName, timezone)}`);
+      console.log(`Is market open: ${isMarketOpen(exchangeName, timezone)}`);
+      console.log(`Is trading day: ${isTradingDay(exchangeName, timezone)}`);
+      
+      shouldProceedWithFetch = fetchDecision.shouldFetch;
+      
+      if (!url.searchParams.get("period1") && shouldProceedWithFetch) {
         // if period1 is not provided, we will use the last updated date to fetch new data since last update
         console.log(`Using last updated date from the most recent asset: ${lastUpdated}`);
         console.log(`Last entry in the database: ${mostRecentAsset.symbol}, last updated: ${lastUpdated.toLocaleDateString()}`);
@@ -82,8 +108,8 @@ export async function loader({ request }: LoaderArgs) {
     console.log(`Time difference in ms: ${timeDifferenceMs}`);
     let assetMapped: AssetType | undefined;
     try {
-      if (period1Date < period2Date && (timeDifferenceMs / 60000) >= 15) {
-        //only fetch data if the time difference is at least 15 minutes
+      if (shouldProceedWithFetch && period1Date < period2Date && (timeDifferenceMs / 60000) >= 15) {
+        //only fetch data if trading hours allow and the time difference is at least 15 minutes
         console.log(`Attempting to fetch data with interval: ${interval} for period from ${period1Date.toISOString()} to ${period2Date.toISOString()}`);
         
         const externalChartData = await getHistoricalData(
@@ -268,6 +294,14 @@ export async function loader({ request }: LoaderArgs) {
             combinedDividends.length > 0 ? combinedDividends : undefined,
           splits: combinedSplits.length > 0 ? combinedSplits : undefined,
         },
+        // Add trading hours metadata to response
+        tradingInfo: mostRecentAsset ? {
+          marketStatus: getMarketStatus(mostRecentAsset.exchangeName || '', mostRecentAsset.timezone || undefined),
+          lastFetchDecision: fetchDecision.reason,
+          nextFetchTime: fetchDecision.nextFetchTime?.toISOString(),
+          isMarketOpen: isMarketOpen(mostRecentAsset.exchangeName || '', mostRecentAsset.timezone || undefined),
+          isTradingDay: isTradingDay(mostRecentAsset.exchangeName || '', mostRecentAsset.timezone || undefined),
+        } : undefined,
       };
       // console.log("Combined Asset Data:", combinedAssetData);
       return combinedAssetData;

@@ -31,6 +31,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import type { AssetType } from "~/datatypes/asset"
 import type { TransactionType } from "~/datatypes/transaction"
+import { getMarketStatus, isMarketOpen } from "~/lib/tradingHours"
+import { Badge } from "~/components/ui/badge"
 
 interface AssetDetailSheetProps {
   open: boolean
@@ -378,6 +380,21 @@ export function AssetDetailSheet({
     "ALL": "All time"
   }
 
+  // Get market status for this asset
+  const marketStatus = useMemo(() => {
+    if (!asset) return null
+    
+    const status = getMarketStatus(asset.exchangeName, asset.timezone)
+    const isOpen = isMarketOpen(asset.exchangeName, asset.timezone)
+    
+    return {
+      status,
+      isOpen,
+      exchange: asset.exchangeName,
+      timezone: asset.exchangeTimezoneName || asset.timezone
+    }
+  }, [asset])
+
   if (!asset) return null
 
   return (
@@ -385,8 +402,17 @@ export function AssetDetailSheet({
       <SheetContent className="w-[90vw] sm:max-w-[800px] overflow-y-auto">
         <SheetHeader className="space-y-3">
           <SheetTitle className="text-2xl">{asset.longName}</SheetTitle>
-          <SheetDescription className="text-base">
-            {asset.symbol} • {asset.exchangeName} • {asset.currency}
+          <SheetDescription className="text-base flex flex-row items-center justify-between gap-2">
+            <span>{asset.symbol} • {asset.exchangeName} • {asset.currency}</span>
+            {marketStatus && (
+                <Badge 
+                  variant={marketStatus.isOpen ? "default" : "secondary"}
+                  className={`${marketStatus.isOpen ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-800 hover:bg-gray-200"} flex items-center text-xs font-medium flex items-center gap-2`}
+                 >
+                  <span className={`w-2 h-2 rounded-full ${marketStatus.isOpen ? "bg-green-500" : "bg-gray-500"}`} />
+                  {marketStatus.status}
+                </Badge>
+            )}
           </SheetDescription>
         </SheetHeader>
 
