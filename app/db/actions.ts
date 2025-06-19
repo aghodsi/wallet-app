@@ -1,5 +1,3 @@
-import "dotenv/config";
-import { drizzle } from "drizzle-orm/mysql2";
 import {
   assetTable,
   currencyTable,
@@ -8,21 +6,13 @@ import {
   transactionTable,
   cronRuns,
 } from "./schema";
-import mysql from "mysql2/promise";
 import { eq, inArray, desc, ne, and } from "drizzle-orm";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { PortfolioType } from "~/datatypes/portfolio";
 import type { TransactionType } from "~/datatypes/transaction";
 import type { AssetType } from "~/datatypes/asset";
+import { db } from "./db";
 
-const connection = await mysql.createConnection({
-  host: process.env.DATABASE_HOST!,
-  port: process.env.DATABASE_PORT ? parseInt(process.env.DATABASE_PORT) : 3306,
-  user: process.env.DATABASE_USER!,
-  password: process.env.DATABASE_PASSWORD!,
-  database: process.env.DATABASE_NAME!,
-  ssl: {},
-});
 // Constants
 const HOUSEKEEPING_TRANSACTION = 1;
 const REGULAR_TRANSACTION = 0;
@@ -34,17 +24,23 @@ type CreateTransactionResult = {
   housekeepingTransaction?: { id: number };
 };
 
-const db = drizzle({ client: connection });
-
-export async function fetchPortfolios() {
+export async function fetchPortfolios(userId?: string) {
+  if (userId) {
+    return db.select().from(portfolioTable).where(eq(portfolioTable.userId, userId));
+  }
   return db.select().from(portfolioTable);
 }
 
-export async function fetchPortfolioById(portfolioId: number) {
+export async function fetchPortfolioById(portfolioId: number, userId?: string) {
+  const conditions = [eq(portfolioTable.id, portfolioId)];
+  if (userId) {
+    conditions.push(eq(portfolioTable.userId, userId));
+  }
+  
   return db
     .select()
     .from(portfolioTable)
-    .where(eq(portfolioTable.id, portfolioId))
+    .where(conditions.length > 1 ? and(...conditions) : conditions[0])
     .limit(1);
 }
 
@@ -68,6 +64,38 @@ export async function fetchInstitutionByIds(institutionIds: number[]) {
 }
 
 export async function fetchCurrencies() {
+  return db.select().from(currencyTable);
+}
+
+export async function createDefaultCurrencies() {
+  const defaultCurrencies = [
+    { code: 'USD', name: 'United States Dollar', symbol: '$', exchangeRate: 1.18, isDefault: 0 },
+    { code: 'EUR', name: 'Euro', symbol: '€', exchangeRate: 1.0, isDefault: 1 },
+    { code: 'JPY', name: 'Japanese Yen', symbol: '¥', exchangeRate: 129.4, isDefault: 0 },
+    { code: 'GBP', name: 'British Pound Sterling', symbol: '£', exchangeRate: 0.86, isDefault: 0 },
+    { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', exchangeRate: 1.59, isDefault: 0 },
+    { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$', exchangeRate: 1.47, isDefault: 0 },
+    { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF', exchangeRate: 1.08, isDefault: 0 },
+    { code: 'CNY', name: 'Chinese Yuan', symbol: '¥', exchangeRate: 7.61, isDefault: 0 },
+    { code: 'SEK', name: 'Swedish Krona', symbol: 'kr', exchangeRate: 10.32, isDefault: 0 },
+    { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$', exchangeRate: 1.67, isDefault: 0 }
+  ];
+
+  const insertPromises = defaultCurrencies.map(currency => 
+    db.insert(currencyTable).values({
+      code: currency.code,
+      name: currency.name,
+      symbol: currency.symbol,
+      exchangeRate: currency.exchangeRate,
+      isDefault: currency.isDefault,
+      lastUpdated: new Date().getTime().toString()
+    })
+  );
+
+  await Promise.all(insertPromises);
+  console.log('Default currencies inserted successfully');
+  
+  // Return the inserted currencies
   return db.select().from(currencyTable);
 }
 
@@ -165,7 +193,32 @@ export async function fetchTransactionsForPortfolio(portfolioId: number) {
     .where(eq(transactionTable.portfolioId, portfolioId));
 }
 
-export async function fetchAllTransactions() {
+export async function fetchAllTransactions(userId?: string) {
+  if (userId) {
+    // Join with portfolios to filter by user
+    return db
+      .select({
+        id: transactionTable.id,
+        portfolioId: transactionTable.portfolioId,
+        date: transactionTable.date,
+        type: transactionTable.type,
+        asset: transactionTable.asset,
+        quantity: transactionTable.quantity,
+        price: transactionTable.price,
+        commision: transactionTable.commision,
+        currency: transactionTable.currency,
+        recurrence: transactionTable.recurrence,
+        tax: transactionTable.tax,
+        tags: transactionTable.tags,
+        notes: transactionTable.notes,
+        isHouskeeping: transactionTable.isHouskeeping,
+        duplicateOf: transactionTable.duplicateOf,
+        recurrenceOf: transactionTable.recurrenceOf,
+      })
+      .from(transactionTable)
+      .innerJoin(portfolioTable, eq(transactionTable.portfolioId, portfolioTable.id))
+      .where(eq(portfolioTable.userId, userId));
+  }
   return db.select().from(transactionTable);
 }
 
@@ -177,7 +230,7 @@ export async function fetchTransactionById(transactionId: number) {
     .limit(1);
 }
 
-export async function createPortfolio(portfolio: PortfolioType) {
+export async function createPortfolio(portfolio: PortfolioType, userId: string) {
   try {
     return await db.transaction(async (tx) => {
       let institutionId = portfolio.institution.id;
@@ -198,6 +251,7 @@ export async function createPortfolio(portfolio: PortfolioType) {
           symbol: portfolio.symbol,
           type: portfolio.type || "Investment",
           institutionId: institutionId,
+          userId: userId,
           createdAt: new Date().getTime().toString(),
           tags: portfolio.tags || "",
         })

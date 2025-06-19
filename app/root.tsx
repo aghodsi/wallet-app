@@ -26,6 +26,7 @@ import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
 import { CurrencyDisplayProvider } from "./contexts/currencyDisplayContext";
 import { TimezoneProvider } from "./contexts/timezoneContext";
+import { AuthProvider } from "./contexts/authContext";
 import type { PortfolioType } from "./datatypes/portfolio";
 import { cronService } from "./services/cronService";
 import { ThemeProvider } from "./components/theme-provider";
@@ -63,11 +64,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 const queryClient = new QueryClient();
 
-export async function loader({ params }: Route.LoaderArgs) {
-  // const pf_from_db = await fetchPortfolios();
+export async function loader({ request }: Route.LoaderArgs) {
+  // Get current user session
+  const { auth } = await import("~/lib/auth");
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userId = session?.user?.id;
+
+  // Fetch portfolios for the current user (or all if no user)
   const pf_from_db = await queryClient.fetchQuery({
-    queryKey: ["portfolios"], 
-    queryFn: fetchPortfolios,
+    queryKey: ["portfolios", userId], 
+    queryFn: () => fetchPortfolios(userId),
   });
   const currencyIds = pf_from_db.map((pf) => pf.currency);
   const institutionIds = pf_from_db.map((pf) => pf.institutionId);
@@ -206,17 +212,19 @@ export default function App({ loaderData }: Route.ComponentProps) {
     <>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
-          <PortfolioProvider initialPortfolios={portfolios}>
-            <CurrencyDisplayProvider>
-              <TimezoneProvider>
-                <TransactionDialogProvider currencies={currencies} institutions={institutions}>
-                  <SidebarLayout>
-                    <Outlet />
-                  </SidebarLayout>
-                </TransactionDialogProvider>
-              </TimezoneProvider>
-            </CurrencyDisplayProvider>
-          </PortfolioProvider>
+          <AuthProvider>
+            <PortfolioProvider initialPortfolios={portfolios}>
+              <CurrencyDisplayProvider>
+                <TimezoneProvider>
+                  <TransactionDialogProvider currencies={currencies} institutions={institutions}>
+                    <SidebarLayout>
+                      <Outlet />
+                    </SidebarLayout>
+                  </TransactionDialogProvider>
+                </TimezoneProvider>
+              </CurrencyDisplayProvider>
+            </PortfolioProvider>
+          </AuthProvider>
         </ThemeProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>

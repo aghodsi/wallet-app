@@ -16,4 +16,5 @@ export default [
     route("/api/transactions/:id?", "routes/api.transactions.tsx"),
     route("/api/currencies", "routes/api.currencies.tsx"),
     route("/api/import", "routes/api.import.tsx"),
+    route("/api/auth/*", "routes/api.auth.$.tsx"),
 ] satisfies RouteConfig;

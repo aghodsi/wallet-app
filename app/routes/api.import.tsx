@@ -3,12 +3,14 @@ import {
   createInstitution, 
   createTransaction,
   fetchCurrencies,
-  fetchInstitutions
+  fetchInstitutions,
+  createDefaultCurrencies
 } from "~/db/actions";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { PortfolioType } from "~/datatypes/portfolio";
 import type { TransactionType } from "~/datatypes/transaction";
 import type { CurrencyType } from "~/datatypes/currency";
+import { auth } from "~/lib/auth";
 
 interface GhostfolioExport {
   meta: {
@@ -56,6 +58,27 @@ interface GhostfolioExport {
 
 export async function action({ request }: { request: Request }) {
   try {
+    // Get the authenticated user session
+    const session = await auth.api.getSession({
+      headers: request.headers
+    });
+
+    console.log("Import: Session check", { 
+      hasSession: !!session, 
+      hasUser: !!session?.user, 
+      userId: session?.user?.id 
+    });
+
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        message: "Authentication required. Please sign in to import data.",
+      };
+    }
+
+    const userId = session.user.id;
+    console.log("Import: Starting import for userId:", userId);
+
     const formData = await request.formData();
     const jsonData = formData.get("jsonData") as string;
 
@@ -85,8 +108,23 @@ export async function action({ request }: { request: Request }) {
     }
 
     // Fetch existing data to avoid duplicates
-    const existingCurrencies = await fetchCurrencies();
+    let existingCurrencies = await fetchCurrencies();
+    
+    // If no currencies exist, create the default ones
+    if (existingCurrencies.length === 0) {
+      console.log("Import: No currencies found, creating default currencies");
+      existingCurrencies = await createDefaultCurrencies();
+      console.log("Import: Created default currencies", { count: existingCurrencies.length });
+    }
+    
     const existingInstitutions = await fetchInstitutions();
+
+    console.log("Import: Existing data", {
+      currenciesCount: existingCurrencies.length,
+      institutionsCount: existingInstitutions.length,
+      accountsToProcess: parsedData.accounts.length,
+      activitiesToProcess: parsedData.activities.length
+    });
 
     const stats = {
       portfolios: 0,
@@ -141,8 +179,11 @@ export async function action({ request }: { request: Request }) {
 
       // Step 2: Create portfolios from accounts  
       // Mapping: accounts -> portfolios
+      console.log("Import: Starting portfolio creation phase");
       for (const account of parsedData.accounts) {
         try {
+          console.log(`Import: Processing account '${account.name}' (currency: ${account.currency}, excluded: ${account.isExcluded})`);
+          
           // Skip excluded accounts
           if (account.isExcluded) {
             console.log(`Skipping excluded account: ${account.name}`);
@@ -154,8 +195,15 @@ export async function action({ request }: { request: Request }) {
             curr => curr.code.toUpperCase() === account.currency.toUpperCase()
           );
 
+          console.log(`Import: Currency lookup for '${account.currency}'`, { 
+            found: !!rawCurrency, 
+            currencyId: rawCurrency?.id 
+          });
+
           if (!rawCurrency) {
-            errors.push(`Currency '${account.currency}' not found for account '${account.name}'. Please ensure this currency exists in your system.`);
+            const errorMsg = `Currency '${account.currency}' not found for account '${account.name}'. Please ensure this currency exists in your system.`;
+            console.error("Import: " + errorMsg);
+            errors.push(errorMsg);
             continue;
           }
 
@@ -172,14 +220,23 @@ export async function action({ request }: { request: Request }) {
 
           // Get institution for this account
           const institutionId = institutionMap.get(account.platformId);
+          console.log(`Import: Institution lookup for platformId '${account.platformId}'`, { 
+            found: !!institutionId, 
+            institutionId 
+          });
+          
           if (!institutionId) {
-            errors.push(`Institution not found for account '${account.name}' (platformId: ${account.platformId})`);
+            const errorMsg = `Institution not found for account '${account.name}' (platformId: ${account.platformId})`;
+            console.error("Import: " + errorMsg);
+            errors.push(errorMsg);
             continue;
           }
 
           const rawInstitution = existingInstitutions.find(inst => inst.id === institutionId);
           if (!rawInstitution) {
-            errors.push(`Institution with ID ${institutionId} not found in database`);
+            const errorMsg = `Institution with ID ${institutionId} not found in database`;
+            console.error("Import: " + errorMsg);
+            errors.push(errorMsg);
             continue;
           }
 
@@ -210,26 +267,60 @@ export async function action({ request }: { request: Request }) {
             selected: false,
           };
 
-          const createdPortfolio = await createPortfolio(portfolioData);
+          console.log(`Import: About to create portfolio for '${account.name}'`, {
+            portfolioData: {
+              name: portfolioData.name,
+              currencyId: portfolioData.currency.id,
+              institutionId: portfolioData.institution.id,
+              type: portfolioData.type
+            },
+            userId
+          });
+
+          const createdPortfolio = await createPortfolio(portfolioData, userId);
+          console.log(`Import: Portfolio creation result for '${account.name}'`, {
+            success: !!createdPortfolio,
+            length: createdPortfolio?.length,
+            portfolioId: createdPortfolio?.[0]?.id
+          });
+
           if (createdPortfolio && createdPortfolio.length > 0) {
             portfolioMap.set(account.id, createdPortfolio[0].id);
             stats.portfolios++;
             console.log(`Created portfolio: ${account.name} -> ${createdPortfolio[0].id}`);
           } else {
-            errors.push(`Failed to create portfolio: ${account.name}`);
+            const errorMsg = `Failed to create portfolio: ${account.name}`;
+            console.error("Import: " + errorMsg);
+            errors.push(errorMsg);
           }
         } catch (error) {
-          errors.push(`Error creating portfolio ${account.name}: ${error}`);
+          const errorMsg = `Error creating portfolio ${account.name}: ${error}`;
+          console.error("Import: " + errorMsg);
+          errors.push(errorMsg);
         }
       }
 
       // Step 3: Create transactions from activities
       // Mapping: activities -> transactions
+      console.log("Import: Starting transaction creation phase", {
+        totalActivities: parsedData.activities.length,
+        portfoliosCreated: stats.portfolios,
+        portfolioMapSize: portfolioMap.size
+      });
+
       for (const activity of parsedData.activities) {
         try {
           const portfolioId = portfolioMap.get(activity.accountId);
+          console.log(`Import: Processing transaction for symbol '${activity.symbol}'`, {
+            accountId: activity.accountId,
+            portfolioId,
+            hasPortfolio: !!portfolioId
+          });
+
           if (!portfolioId) {
-            errors.push(`Portfolio not found for activity with symbol ${activity.symbol} (accountId: ${activity.accountId})`);
+            const errorMsg = `Portfolio not found for activity with symbol ${activity.symbol} (accountId: ${activity.accountId})`;
+            console.error("Import: " + errorMsg);
+            errors.push(errorMsg);
             continue;
           }
 
@@ -257,13 +348,29 @@ export async function action({ request }: { request: Request }) {
             recurrence: "", // Ghostfolio doesn't have recurring transactions
           };
 
+          console.log(`Import: About to create transaction`, {
+            symbol: activity.symbol,
+            type: activity.type,
+            portfolioId,
+            quantity: activity.quantity,
+            price: activity.unitPrice
+          });
+
           await createTransaction(transactionData);
           stats.transactions++;
           console.log(`Created transaction: ${activity.type} ${activity.quantity} ${activity.symbol} @ ${activity.unitPrice}`);
         } catch (error) {
-          errors.push(`Error creating transaction for ${activity.symbol}: ${error}`);
+          const errorMsg = `Error creating transaction for ${activity.symbol}: ${error}`;
+          console.error("Import: " + errorMsg);
+          errors.push(errorMsg);
         }
       }
+
+      console.log("Import: Final import statistics", {
+        stats,
+        errorsCount: errors.length,
+        errors: errors.length > 0 ? errors : "No errors"
+      });
 
       return {
         success: true,

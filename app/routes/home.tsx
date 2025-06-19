@@ -19,6 +19,8 @@ import { Separator } from "~/components/ui/separator";
 import { PlusCircle, TrendingUp, TrendingDown, PiggyBank, Target, Wallet, BarChart3, DollarSign, Activity, Coins } from "lucide-react";
 import { Treemap, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { convertCurrency, formatCurrency as formatCurrencyUtil, getDefaultCurrency } from "~/lib/currencyUtils";
+import { useAuth } from "~/contexts/authContext";
+import { SignInDialog } from "~/components/auth/signin-dialog";
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -109,6 +111,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [openTransaction, setOpenTransaction] = useState(false);
   const [createdPortfolio, setCreatedPortfolio] = useState({} as PortfolioType);
   const [createdTransaction, setCreatedTransaction] = useState({} as TransactionType);
+  const { user, isLoading } = useAuth();
 
   const fetcher = useFetcher();
 
@@ -437,16 +440,30 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
                 {/* CTA Button */}
                 <div className="text-center space-y-4">
-                  <Button 
-                    onClick={() => setOpenPortfolio(true)}
-                    size="lg"
-                    className="w-full sm:w-auto"
-                  >
-                    <PlusCircle className="mr-2 h-5 w-5" />
-                    Create Your First Portfolio
-                  </Button>
+                  {!isLoading && (
+                    user ? (
+                      <Button 
+                        onClick={() => setOpenPortfolio(true)}
+                        size="lg"
+                        className="w-full sm:w-auto"
+                      >
+                        <PlusCircle className="mr-2 h-5 w-5" />
+                        Create Your First Portfolio
+                      </Button>
+                    ) : (
+                      <SignInDialog>
+                        <Button 
+                          size="lg"
+                          className="w-full sm:w-auto"
+                        >
+                          <PlusCircle className="mr-2 h-5 w-5" />
+                          Sign In to Get Started
+                        </Button>
+                      </SignInDialog>
+                    )
+                  )}
                   <p className="text-sm text-muted-foreground">
-                    Get started in under a minute
+                    {user ? "Get started in under a minute" : "Sign in to start tracking your investments"}
                   </p>
                 </div>
               </CardContent>

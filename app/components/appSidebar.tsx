@@ -30,6 +30,7 @@ import { userPortfolios } from "~/stateManagement/portfolioContext"
 import { useDialogContext } from "~/contexts/transactionDialogContext"
 import { DataFreshnessIndicator } from "./dataFreshnessIndicator"
 import { TimezoneSelector } from "./timezoneSelector"
+import { useAuth } from "~/contexts/authContext"
 
 const data = {
   user: {
@@ -141,6 +142,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const portfolios = userPortfolios();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
+  const { user } = useAuth();
   const [actions, setActions] = React.useState(data.actions);
   const [navItems, setNavItems] = React.useState(data.navItems);
   const [settingsNavItems, setSettingsNavItems] = React.useState(data.settingsNavItems);
@@ -182,7 +184,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <TimezoneSelector />
         <DataFreshnessIndicator />
-        {/* <NavUser user={data.user} /> */}
+        {user && <NavUser />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
