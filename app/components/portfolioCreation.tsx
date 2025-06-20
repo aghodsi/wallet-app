@@ -53,7 +53,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
     }
   );
   const [symbol, setSymbol] = useState("");
-  const [institution, setInstitution] = useState(props.institutions[0]);
+  const [institution, setInstitution] = useState<InstitutionType | null>(null);
   const [tags, setTags] = useState<MultipleSelectorOption[]>([]);
   const [type, setType] = useState<"Current" | "Saving" | "Investment">(
     "Current"
@@ -81,7 +81,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
     setName("");
     setCurrency(props.currencies[0] || currency);
     setSymbol("");
-    setInstitution(props.institutions[0]);
+    setInstitution(null);
     setTags([]);
     setType("Current");
   };
@@ -185,7 +185,7 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
             </Label>
             <MultipleSelector
             key={"institution-select"}
-            placeholder="Select Institution"
+            placeholder="Select an institution for your portfolio"
             maxSelected={1}
             onMaxSelected={() => {
               toast.info(
@@ -209,17 +209,21 @@ export function PortfolioCreation(props: PortfolioCreationProps) {
             }
             onChange={(selected) => {
               setInstitutionError(selected.length === 0);
-              setInstitution(
-                props.institutions.find(
-                  (inst) => inst.id.toString() === selected[0].value
-                ) || {
-                  id: getRndInteger(1, 9999),
-                  name: selected[0].label,
-                  isDefault: false,
-                  lastUpdated: new Date().toISOString(),
-                  isNew: true,
-                }
-              );
+              if (selected.length > 0) {
+                setInstitution(
+                  props.institutions.find(
+                    (inst) => inst.id.toString() === selected[0].value
+                  ) || {
+                    id: getRndInteger(1, 9999),
+                    name: selected[0].label,
+                    isDefault: false,
+                    lastUpdated: new Date().toISOString(),
+                    isNew: true,
+                  }
+                );
+              } else {
+                setInstitution(null);
+              }
             }}
           />
             {institutionError && (

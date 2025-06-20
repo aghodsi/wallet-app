@@ -2,11 +2,11 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
     index("routes/home.tsx"),
-    route("/transactions", "routes/transactions.tsx"),
+    route("/transactions/:transactionId?", "routes/transactions.tsx"),
     route("/assets", "routes/assets.tsx"),
     route("/recurringTransactions", "routes/recurringTransactions.tsx"),
     route("/createPortfolio", "routes/createPortfolio.tsx"),
-    route("/portfolio", "routes/portfolio.tsx"),
+    route("/portfolio/:portfolioId?", "routes/portfolio.tsx"),
     route("/portfolioSettings", "routes/portfolioSettings.tsx"),
     route("/currencySettings", "routes/currencySettings.tsx"),
     route("/assetsConfiguration", "routes/assetsConfiguration.tsx"),

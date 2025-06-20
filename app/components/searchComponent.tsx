@@ -27,10 +27,11 @@ import {
 import { useEffect, useState } from "react";
 import { useIsMac } from "~/hooks/useIsMac";
 import { Button } from "./ui/button";
-import { userPortfolios } from "~/stateManagement/portfolioContext";
+import { userPortfolios, usePortfolioDispatch } from "~/stateManagement/portfolioContext";
 import { useTransactions } from "~/hooks/useTransactions";
 import { useNavigate } from "react-router";
 import { useDialogContext } from "~/contexts/transactionDialogContext";
+import { useTransactionView } from "~/contexts/transactionViewContext";
 import { useTheme } from "~/components/theme-provider";
 import { formatDate } from "~/lib/dateUtils";
 import { AssetDetailSheet } from "~/components/assetDetailSheet";
@@ -46,10 +47,12 @@ export function SearchComponent() {
   const isMac = useIsMac();
   const navigate = useNavigate();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
+  const { openTransactionView } = useTransactionView();
   const { setTheme } = useTheme();
   const { signOut, user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const portfolios = userPortfolios();
+  const portfolioDispatch = usePortfolioDispatch();
   
   // Check if there are any real portfolios (excluding "All" portfolio with id -1)
   const hasRealPortfolios = portfolios.some(p => p.id !== -1);
@@ -113,12 +116,21 @@ export function SearchComponent() {
 
   const handlePortfolioSelect = (portfolioId: number) => {
     setOpen(false);
-    navigate(`/portfolio?id=${portfolioId}`);
+    const portfolio = portfolios.find(p => p.id === portfolioId);
+    if (portfolio) {
+      portfolioDispatch({
+        type: 'selected',
+        portfolio: portfolio
+      });
+    }
   };
 
   const handleTransactionSelect = (transactionId: number) => {
     setOpen(false);
-    navigate(`/transactions?id=${transactionId}`);
+    const transaction = transactions?.find(t => t.id === transactionId);
+    if (transaction) {
+      openTransactionView(transaction);
+    }
   };
 
   const handleAssetSelect = (assetSymbol: string) => {
@@ -203,7 +215,7 @@ export function SearchComponent() {
           <CommandSeparator />
 
           {/* Portfolios Section */}
-          <CommandGroup heading="Portfolios">
+          <CommandGroup heading="Select Portfolio">
             {portfolios.length > 0 ? (
               portfolios.map((portfolio) => (
                 <CommandItem 

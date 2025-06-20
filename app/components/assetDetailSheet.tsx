@@ -41,11 +41,11 @@ interface AssetDetailSheetProps {
   transactions: TransactionType[]
 }
 
-export function AssetDetailSheet({ 
-  open, 
-  onOpenChange, 
-  asset, 
-  transactions 
+export function AssetDetailSheet({
+  open,
+  onOpenChange,
+  asset,
+  transactions
 }: AssetDetailSheetProps) {
   const [timeRange, setTimeRange] = useState("1Y")
 
@@ -90,9 +90,6 @@ export function AssetDetailSheet({
       default:
         startDate.setFullYear(now.getFullYear() - 1)
     }
-
-    console.log(`[AssetDetailSheet] Processing ${asset.symbol}, quotes: ${asset.quotes.length}, time range: ${timeRange}`)
-
     // Filter quotes within the date range
     const filteredQuotes = asset.quotes
       .filter(quote => {
@@ -101,62 +98,47 @@ export function AssetDetailSheet({
       })
       .sort((a, b) => parseInt(a.date) - parseInt(b.date))
 
-    console.log(`[AssetDetailSheet] Filtered quotes: ${filteredQuotes.length}`)
 
     if (filteredQuotes.length === 0) {
-      console.log(`[AssetDetailSheet] No quotes in time range for ${asset.symbol}`)
       return []
     }
 
     // Create dividend date map for easier lookup (date string -> amount)
     const dividendMap = new Map<string, number>()
-    
+
     if (asset.events?.dividends && asset.events.dividends.length > 0) {
-      console.log(`[AssetDetailSheet] Processing ${asset.events.dividends.length} dividends for ${asset.symbol}`)
-      console.log(`[AssetDetailSheet] Raw dividends:`, asset.events.dividends)
-      console.log(`[AssetDetailSheet] Start date for filtering:`, startDate.toISOString())
-      
+
+
       asset.events.dividends.forEach((dividend, index) => {
         const rawTimestamp = parseInt(dividend.date)
-        
+
         // Fix timestamp format: if timestamp appears to be in seconds (< 10 billion), convert to milliseconds
         const dividendTimestamp = rawTimestamp < 10000000000 ? rawTimestamp * 1000 : rawTimestamp
         const dividendDate = new Date(dividendTimestamp)
-        
-        console.log(`[AssetDetailSheet] Dividend ${index + 1}:`)
-        console.log(`  - Raw date: ${dividend.date}`)
-        console.log(`  - Raw timestamp: ${rawTimestamp}`)
-        console.log(`  - Corrected timestamp: ${dividendTimestamp}`)
-        console.log(`  - Converted date: ${dividendDate.toISOString()}`)
-        console.log(`  - Amount: ${dividend.amount}`)
-        console.log(`  - Valid date: ${!isNaN(dividendDate.getTime())}`)
-        console.log(`  - Within range: ${dividendDate >= startDate}`)
-        
+
+
+
         if (dividendDate >= startDate && !isNaN(dividendDate.getTime())) {
           const dividendDateKey = dividendDate.toISOString().split('T')[0] // YYYY-MM-DD
           dividendMap.set(dividendDateKey, dividend.amount)
-          console.log(`[AssetDetailSheet] ✓ Added dividend: ${dividendDateKey} -> ${dividend.amount}`)
         } else {
-          console.log(`[AssetDetailSheet] ✗ Skipped dividend: ${dividendDate.toISOString()} (before ${startDate.toISOString()} or invalid)`)
         }
       })
-      
-      console.log(`[AssetDetailSheet] Final dividend map:`, Array.from(dividendMap.entries()))
+
     } else {
-      console.log(`[AssetDetailSheet] No dividends found in asset.events for ${asset.symbol}`)
-      console.log(`[AssetDetailSheet] Asset events:`, asset.events)
+      console.warn(`[AssetDetailSheet] No dividends found for asset: ${asset.symbol}`)
     }
 
     // Create transaction maps for buy/sell transactions
     const buyTransactionMap = new Map<string, { price: number, quantity: number }>()
     const sellTransactionMap = new Map<string, { price: number, quantity: number }>()
-    
+
     assetTransactions.forEach(transaction => {
       // Parse transaction date as epoch timestamp
       const transactionDate = new Date(parseInt(transaction.date))
       if (transactionDate >= startDate && !isNaN(transactionDate.getTime())) {
         const transactionDateKey = transactionDate.toISOString().split('T')[0] // YYYY-MM-DD
-        
+
         if (transaction.type === "Buy") {
           buyTransactionMap.set(transactionDateKey, {
             price: transaction.price,
@@ -180,7 +162,7 @@ export function AssetDetailSheet({
         const buyTransaction = buyTransactionMap.get(quoteDateKey)
         const sellTransaction = sellTransactionMap.get(quoteDateKey)
         const price = quote.close || quote.adjclose || 0
-        
+
         return {
           date: quote.date,
           price,
@@ -197,7 +179,7 @@ export function AssetDetailSheet({
 
     // For other time ranges, aggregate to daily data (last entry per day)
     const dailyData = new Map<string, any>()
-    
+
     filteredQuotes.forEach((quote, index) => {
       const quoteDate = new Date(parseInt(quote.date))
       const dateKey = quoteDate.toISOString().split('T')[0] // YYYY-MM-DD
@@ -205,12 +187,12 @@ export function AssetDetailSheet({
       const buyTransaction = buyTransactionMap.get(dateKey)
       const sellTransaction = sellTransactionMap.get(dateKey)
       const price = quote.close || quote.adjclose || 0
-      
+
       // Log first few quotes for debugging
       if (index < 3) {
         console.log(`[AssetDetailSheet] Quote ${index + 1}: ${quote.date} -> ${dateKey}, dividend: ${dividendAmount || 'none'}`)
       }
-      
+
       // Keep the latest entry for each day
       const existingEntry = dailyData.get(dateKey)
       if (!existingEntry || parseInt(quote.date) > parseInt(existingEntry.date)) {
@@ -225,12 +207,12 @@ export function AssetDetailSheet({
           buyQuantity: buyTransaction?.quantity || null,
           sellQuantity: sellTransaction?.quantity || null
         })
-        
+
         // Log when we find a dividend match
         if (dividendAmount) {
           console.log(`[AssetDetailSheet] 🎯 Found dividend match! Date: ${dateKey}, Amount: ${dividendAmount}, Price: ${price}`)
         }
-        
+
         // Log when we find transaction matches
         if (buyTransaction) {
           console.log(`[AssetDetailSheet] 🟢 Found buy transaction! Date: ${dateKey}, Price: ${buyTransaction.price}, Quantity: ${buyTransaction.quantity}`)
@@ -241,18 +223,14 @@ export function AssetDetailSheet({
       }
     })
 
-    const finalData = Array.from(dailyData.values()).sort((a, b) => 
+    const finalData = Array.from(dailyData.values()).sort((a, b) =>
       parseInt(a.date) - parseInt(b.date)
     )
-    
-    console.log(`[AssetDetailSheet] Final chart data: ${finalData.length} points`)
-    const dividendPoints = finalData.filter(d => d.dividendDot !== null)
-    const buyPoints = finalData.filter(d => d.buyDot !== null)
-    const sellPoints = finalData.filter(d => d.sellDot !== null)
-    console.log(`[AssetDetailSheet] Dividend points: ${dividendPoints.length}`)
-    console.log(`[AssetDetailSheet] Buy transaction points: ${buyPoints.length}`)
-    console.log(`[AssetDetailSheet] Sell transaction points: ${sellPoints.length}`)
-    
+
+    // const dividendPoints = finalData.filter(d => d.dividendDot !== null)
+    // const buyPoints = finalData.filter(d => d.buyDot !== null)
+    // const sellPoints = finalData.filter(d => d.sellDot !== null)
+
     return finalData
   }, [asset, timeRange])
 
@@ -281,7 +259,7 @@ export function AssetDetailSheet({
     // Create smart formatter based on price range
     const tickFormatter = (value: number) => {
       const currency = asset?.currency || '$'
-      
+
       if (value >= 1000000) {
         return `${currency}${(value / 1000000).toFixed(1)}M`
       } else if (value >= 1000) {
@@ -333,9 +311,9 @@ export function AssetDetailSheet({
     const sellTransactions = assetTransactions.filter(t => t.type === "Sell")
     const dividendTransactions = assetTransactions.filter(t => t.type === "Dividend")
 
-    const totalShares = buyTransactions.reduce((sum, t) => sum + t.quantity, 0) - 
-                       sellTransactions.reduce((sum, t) => sum + t.quantity, 0)
-    
+    const totalShares = buyTransactions.reduce((sum, t) => sum + t.quantity, 0) -
+      sellTransactions.reduce((sum, t) => sum + t.quantity, 0)
+
     const totalInvested = buyTransactions.reduce((sum, t) => sum + (t.quantity * t.price + t.commision + t.tax), 0)
     const totalReceived = sellTransactions.reduce((sum, t) => sum + (t.quantity * t.price - t.commision - t.tax), 0)
     const totalDividends = dividendTransactions.reduce((sum, t) => sum + (t.quantity * t.price), 0)
@@ -372,7 +350,7 @@ export function AssetDetailSheet({
 
   const timeRangeLabels = {
     "1d": "Last 1 day",
-    "1w": "Last 1 week", 
+    "1w": "Last 1 week",
     "1m": "Last 1 month",
     "YTD": "Year to date",
     "1Y": "Last 1 year",
@@ -383,10 +361,10 @@ export function AssetDetailSheet({
   // Get market status for this asset
   const marketStatus = useMemo(() => {
     if (!asset) return null
-    
+
     const status = getMarketStatus(asset.exchangeName, asset.timezone)
     const isOpen = isMarketOpen(asset.exchangeName, asset.timezone)
-    
+
     return {
       status,
       isOpen,
@@ -405,13 +383,13 @@ export function AssetDetailSheet({
           <SheetDescription className="text-base flex flex-row items-center justify-between gap-2">
             <span>{asset.symbol} • {asset.exchangeName} • {asset.currency}</span>
             {marketStatus && (
-                <Badge 
-                  variant={marketStatus.isOpen ? "default" : "secondary"}
-                  className={`${marketStatus.isOpen ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-800 hover:bg-gray-200"} flex items-center text-xs font-medium flex items-center gap-2`}
-                 >
-                  <span className={`w-2 h-2 rounded-full ${marketStatus.isOpen ? "bg-green-500" : "bg-gray-500"}`} />
-                  {marketStatus.status}
-                </Badge>
+              <Badge
+                variant={marketStatus.isOpen ? "default" : "secondary"}
+                className={`${marketStatus.isOpen ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-800 hover:bg-gray-200"} flex items-center text-xs font-medium flex items-center gap-2`}
+              >
+                <span className={`w-2 h-2 rounded-full ${marketStatus.isOpen ? "bg-green-500" : "bg-gray-500"}`} />
+                {marketStatus.status}
+              </Badge>
             )}
           </SheetDescription>
         </SheetHeader>
@@ -471,7 +449,7 @@ export function AssetDetailSheet({
                     Current: {asset.currency} {performanceMetrics.lastPrice.toFixed(2)}
                   </span>
                   <span className={performanceMetrics.change >= 0 ? "text-green-600" : "text-red-600"}>
-                    {performanceMetrics.change >= 0 ? "+" : ""}{performanceMetrics.change.toFixed(2)} 
+                    {performanceMetrics.change >= 0 ? "+" : ""}{performanceMetrics.change.toFixed(2)}
                     ({performanceMetrics.changePercent.toFixed(2)}%)
                   </span>
                 </CardDescription>
@@ -534,9 +512,9 @@ export function AssetDetailSheet({
                     domain={yAxisConfig.domain}
                     tickCount={yAxisConfig.tickCount}
                     tickFormatter={yAxisConfig.tickFormatter}
-                    label={{ 
-                      value: `Price (${asset.currency})`, 
-                      angle: -90, 
+                    label={{
+                      value: `Price (${asset.currency})`,
+                      angle: -90,
                       position: 'insideLeft',
                       style: { textAnchor: 'middle', fontSize: '12px' }
                     }}
@@ -546,23 +524,23 @@ export function AssetDetailSheet({
                     cursor={false}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null
-                      
+
                       const data = payload[0]?.payload
                       const date = new Date(parseInt(label))
-                      
-                      const formattedDate = timeRange === "1d" 
+
+                      const formattedDate = timeRange === "1d"
                         ? date.toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true
-                          })
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true
+                        })
                         : date.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
 
                       return (
                         <div className="rounded-lg border bg-background p-2 shadow-md">
@@ -639,7 +617,7 @@ export function AssetDetailSheet({
                   />
                 </AreaChart>
               </ChartContainer>
-              
+
               {/* Legend */}
               <div className="mt-4 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -693,8 +671,8 @@ export function AssetDetailSheet({
                 <div>
                   <p className="text-muted-foreground">Avg. Buy Price</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {transactionSummary?.averageBuyPrice ? 
-                      `${asset.currency} ${transactionSummary.averageBuyPrice.toFixed(2)}` : 
+                    {transactionSummary?.averageBuyPrice ?
+                      `${asset.currency} ${transactionSummary.averageBuyPrice.toFixed(2)}` :
                       "—"
                     }
                   </p>
@@ -702,8 +680,8 @@ export function AssetDetailSheet({
                 <div>
                   <p className="text-muted-foreground">Avg. Sell Price</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {transactionSummary?.averageSellPrice ? 
-                      `${asset.currency} ${transactionSummary.averageSellPrice.toFixed(2)}` : 
+                    {transactionSummary?.averageSellPrice ?
+                      `${asset.currency} ${transactionSummary.averageSellPrice.toFixed(2)}` :
                       "—"
                     }
                   </p>

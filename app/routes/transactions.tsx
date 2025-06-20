@@ -6,15 +6,15 @@ import { Button } from "~/components/ui/button"
 import { Switch } from "~/components/ui/switch"
 import { Label } from "~/components/ui/label"
 import { Plus } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { type TransactionType } from "~/datatypes/transaction"
 import { type AssetType } from "~/datatypes/asset"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
 import { fetchAllTransactions } from "~/db/actions"
 import { useQueries } from "@tanstack/react-query"
 import { AssetDetailSheet } from "~/components/assetDetailSheet"
-import { TransactionDetailSheet } from "~/components/transactionDetailSheet"
 import { useTransactionDialog } from "~/contexts/transactionDialogContext"
+import { useTransactionView } from "../contexts/transactionViewContext"
 import { useCurrencyDisplay } from "~/contexts/currencyDisplayContext"
 import type { Route } from "./+types/transactions"
 import { apiDelete, handleApiResponse } from "~/lib/api-client"
@@ -24,24 +24,29 @@ import { ErrorDisplay } from "~/components/ErrorBoundary"
 export async function loader({ request, params }: Route.LoaderArgs) {
   try {
     const allTransactions = await fetchAllTransactions()
-    return { transactions: allTransactions }
+    return { 
+      transactions: allTransactions,
+      transactionId: params.transactionId ? parseInt(params.transactionId) : null
+    }
   } catch (error) {
     console.error("Error loading transactions:", error)
-    return { transactions: [], error: "Failed to load transactions" }
+    return { transactions: [], error: "Failed to load transactions", transactionId: null }
   }
 }
 
 export default function Transactions({ loaderData }: Route.ComponentProps) {
-  const { transactions: rawTransactions, error } = loaderData
+  const { transactions: rawTransactions, error, transactionId } = loaderData
   const [selectedAsset, setSelectedAsset] = useState<AssetType | null>(null)
   const [isAssetSheetOpen, setIsAssetSheetOpen] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionType | null>(null)
   const [isTransactionSheetOpen, setIsTransactionSheetOpen] = useState(false)
-  const [transactionSheetMode, setTransactionSheetMode] = useState<"edit" | "clone" | null>(null)
+  const [transactionSheetMode, setTransactionSheetMode] = useState<"edit" | "clone" | "view" | null>(null)
+  const hasOpenedTransaction = useRef<number | null>(null)
   
   const portfolios = userPortfolios()
   const selectedPortfolio = portfolios.find(p => p.selected)
   const { openDialog, currencies } = useTransactionDialog()
+  const { openTransactionView } = useTransactionView()
   const { showOriginalCurrency, toggleCurrencyDisplay } = useCurrencyDisplay()
   
   // Transform and filter the raw transaction data
@@ -149,12 +154,50 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
     })
   }, [transactionsWithAssets, portfolios])
 
+  // Auto-open transaction sheet if transactionId is provided in URL
+  useEffect(() => {
+    if (transactionId && transactionId !== hasOpenedTransaction.current && rawTransactions && rawTransactions.length > 0) {
+      const transaction = rawTransactions.find((t: any) => t.id === transactionId)
+      if (transaction) {
+        const transactionPortfolio = portfolios.find(p => p.id === transaction.portfolioId)
+        const transformedTransaction: TransactionType = {
+          id: transaction.id,
+          portfolioId: transaction.portfolioId,
+          targetPortfolioId: transaction.targetPortfolioId || transaction.portfolioId,
+          date: transaction.date,
+          type: transaction.type,
+          asset: {
+            symbol: transaction.asset,
+            isFetchedFromApi: false,
+          },
+          quantity: transaction.quantity,
+          price: transaction.price,
+          commision: transaction.commision,
+          currency: transaction.currency ? currencies.find((c: any) => c.id === transaction.currency) : transactionPortfolio?.currency,
+          tax: transaction.tax,
+          recurrence: transaction.recurrence || undefined,
+          tags: transaction.tags || "",
+          notes: transaction.notes || undefined,
+          isHousekeeping: Boolean(transaction.isHouskeeping),
+          isCreatedByUser: true,
+        }
+        
+        openTransactionView(transformedTransaction)
+        hasOpenedTransaction.current = transactionId
+      }
+    }
+  }, [transactionId, rawTransactions, portfolios, currencies])
+
   const handleAssetClick = (symbol: string) => {
     const asset = assetsMap.get(symbol)
     if (asset) {
       setSelectedAsset(asset)
       setIsAssetSheetOpen(true)
     }
+  }
+
+  const handleViewTransaction = (transaction: TransactionType) => {
+    openTransactionView(transaction)
   }
 
   const handleEditTransaction = (transaction: TransactionType) => {
@@ -237,6 +280,7 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
         columns={columns} 
         data={transactionsWithAssets || []} 
         onAssetClick={handleAssetClick}
+        onViewTransaction={handleViewTransaction}
         onEditTransaction={handleEditTransaction}
         onCloneTransaction={handleCloneTransaction}
         onDeleteTransaction={handleDeleteTransaction}
@@ -250,15 +294,6 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
         onOpenChange={setIsAssetSheetOpen}
         asset={selectedAsset}
         transactions={transactionsWithAssets}
-      />
-
-      <TransactionDetailSheet
-        open={isTransactionSheetOpen}
-        onOpenChange={setIsTransactionSheetOpen}
-        transaction={selectedTransaction}
-        mode={transactionSheetMode}
-        portfolios={portfolios}
-        currencies={currencies}
       />
 
       </main>

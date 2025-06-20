@@ -47,6 +47,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onAssetClick?: (symbol: string) => void
+  onViewTransaction?: (transaction: any) => void
   onEditTransaction?: (transaction: any) => void
   onCloneTransaction?: (transaction: any) => void
   onDeleteTransaction?: (transactionId: number) => void
@@ -82,6 +83,7 @@ export function TransactionsDataTable<TData, TValue>({
   columns,
   data,
   onAssetClick,
+  onViewTransaction,
   onEditTransaction,
   onCloneTransaction,
   onDeleteTransaction,
@@ -138,6 +140,7 @@ export function TransactionsDataTable<TData, TValue>({
     },
     meta: {
       onAssetClick,
+      onViewTransaction,
       onEditTransaction,
       onCloneTransaction,
       onDeleteTransaction,

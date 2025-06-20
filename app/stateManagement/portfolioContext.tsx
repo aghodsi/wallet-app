@@ -253,17 +253,10 @@ function portfolioReducer(portfolios: PortfolioType[], action: PortfolioActionTy
     case 'selected': {
       console.log("Selected portfolio:", action.portfolio);
       
-      const newState = portfolios.map(p => ({
+      return portfolios.map(p => ({
         ...p,
         selected: p.id === action.portfolio!.id
       }));
-
-      // Use deep comparison to avoid unnecessary re-renders
-      const hasChanged = portfolios.some((p, index) => p.selected !== newState[index].selected);
-      if (!hasChanged) {
-        return portfolios; // No change, return same reference
-      }
-      return newState;
     }
     case 'reset': {
       console.log("Resetting portfolios:", action.portfolios);

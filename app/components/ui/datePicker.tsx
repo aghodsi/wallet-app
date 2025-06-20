@@ -14,12 +14,13 @@ import {
 } from "~/components/ui/popover"
 
 interface DatePickerProps {
+  disabled?: boolean
   value?: Date
   onChange?: (date: Date | undefined) => void
   placeholder?: string
 }
 
-export function DatePicker({ value, onChange, placeholder = "Pick a date" }: DatePickerProps) {
+export function DatePicker({ value, onChange, placeholder = "Pick a date", disabled }: DatePickerProps) {
   const [internalDate, setInternalDate] = React.useState<Date>()
   
   // Use controlled value if provided, otherwise use internal state
@@ -46,6 +47,7 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date" }: Dat
           selected={date}
           onSelect={setDate}
           initialFocus
+          disabled={disabled}
         />
       </PopoverContent>
     </Popover>

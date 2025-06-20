@@ -20,6 +20,7 @@ import {
 import SidebarLayout from "./components/_sidebar_layout";
 import { PortfolioProvider } from "./stateManagement/portfolioContext";
 import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
+import { TransactionViewProvider } from "./contexts/transactionViewContext";
 import { CurrencyDisplayProvider } from "./contexts/currencyDisplayContext";
 import { TimezoneProvider } from "./contexts/timezoneContext";
 import { AuthProvider } from "./contexts/authContext";
@@ -61,7 +62,7 @@ const queryClient = new QueryClient();
 
 export async function loader({ request }: Route.LoaderArgs) {
   // Get current user session
-  const { auth } = await import("~/lib/auth");
+  const { auth } = await import("./lib/auth");
   const session = await auth.api.getSession({ headers: request.headers });
   const userId = session?.user?.id;
 
@@ -128,9 +129,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
               <CurrencyDisplayProvider>
                 <TimezoneProvider>
                   <TransactionDialogProvider currencies={currencies} institutions={institutions}>
-                    <SidebarLayout>
-                      <Outlet />
-                    </SidebarLayout>
+                    <TransactionViewProvider currencies={currencies}>
+                      <SidebarLayout>
+                        <Outlet />
+                      </SidebarLayout>
+                    </TransactionViewProvider>
                   </TransactionDialogProvider>
                 </TimezoneProvider>
               </CurrencyDisplayProvider>

@@ -107,25 +107,25 @@ export function FactCards({
 
     // Calculate current portfolio value based on holdings and last asset prices
     let currentPortfolioValue = 0;
-    console.log('📊 Starting portfolio value calculation');
-    console.log('Holdings map:', Array.from(holdingsMap.entries()));
-    console.log('Available assets:', assets.map(a => ({ symbol: a.symbol, quotesCount: a.quotes.length })));
+
+
+
     
     holdingsMap.forEach((quantity, symbol) => {
-      console.log(`Processing holding: ${symbol}, quantity: ${quantity}`);
+
       if (quantity > 0) { // Only count positive holdings
         const asset = assets.find(a => a.symbol === symbol);
-        console.log(`Found asset for ${symbol}:`, asset ? 'YES' : 'NO');
+
         
         if (asset && asset.quotes.length > 0) {
           // Get the most recent quote
           const latestQuote = asset.quotes[asset.quotes.length - 1];
           const lastPrice = latestQuote.close || latestQuote.adjclose || 0;
-          console.log(`${symbol} - Latest quote:`, latestQuote, 'Last price:', lastPrice);
+
           
           // Convert asset currency to portfolio currency if needed
           const assetValue = quantity * lastPrice;
-          console.log(`${symbol} - Asset value before conversion:`, assetValue, `(${quantity} * ${lastPrice})`);
+
           
           // Create a mock currency object for the asset since asset.currency is a string
           const assetCurrency: CurrencyType = {
@@ -139,19 +139,19 @@ export function FactCards({
           };
           
           const convertedValue = convertCurrency(assetValue, assetCurrency, portfolioCurrency);
-          console.log(`${symbol} - Converted value:`, convertedValue, `(from ${asset.currency} to ${portfolioCurrency.code})`);
+
           
           currentPortfolioValue += convertedValue;
-          console.log(`${symbol} - Running total:`, currentPortfolioValue);
+
         } else {
-          console.log(`${symbol} - No asset found or no quotes available`);
+
         }
       } else {
-        console.log(`${symbol} - Skipping negative/zero quantity`);
+
       }
     });
     
-    console.log('💰 Final current portfolio value:', currentPortfolioValue);
+
 
     // Calculate cash based on sell and dividend activities only
     let totalCash = 0;

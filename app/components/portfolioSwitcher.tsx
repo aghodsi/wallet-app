@@ -1,6 +1,7 @@
 import * as React from "react";
-import { memo, useEffect } from "react";
+import { useEffect } from "react";
 import { ChevronsUpDown, Plus } from "lucide-react";
+import { useNavigate, useLocation } from "react-router";
 
 import {
   DropdownMenu,
@@ -23,7 +24,7 @@ import { usePortfolioDispatch } from "~/stateManagement/portfolioContext";
 import { useIsMac } from "~/hooks/useIsMac";
 import { useDialogContext } from "~/contexts/transactionDialogContext";
 
-export const PortfolioSwitcher = memo(function PortfolioSwitcher({
+export function PortfolioSwitcher({
   portfolios,
 }: {
   portfolios: PortfolioType[];
@@ -32,12 +33,26 @@ export const PortfolioSwitcher = memo(function PortfolioSwitcher({
   const { isMobile } = useSidebar();
   const portfolioDispatch = usePortfolioDispatch();
   const { openPortfolioDialog } = useDialogContext();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Get active portfolio directly from context state
   const activePortfolio = React.useMemo(() => 
     portfolios.find((p) => p.selected) || portfolios.find(p => p.id === -1),
     [portfolios]
   );
+
+  const handlePortfolioSelect = React.useCallback((portfolio: PortfolioType) => {
+    portfolioDispatch({
+      type: "selected",
+      portfolio: portfolio,
+    });
+    
+    // Navigate to portfolio page with the portfolio ID if we're currently on a portfolio route
+    if (location.pathname.startsWith('/portfolio')) {
+      navigate(`/portfolio/${portfolio.id}`);
+    }
+  }, [portfolioDispatch, navigate, location.pathname]);
   
 
 
@@ -51,17 +66,14 @@ export const PortfolioSwitcher = memo(function PortfolioSwitcher({
         const index = Number.parseInt(e.key, 10) - 1;
         if (index >= 0 && index < portfolios.length) {
           const selectedPortfolio = portfolios[index];
-          portfolioDispatch({
-            type: "selected",
-            portfolio: selectedPortfolio,
-          });
+          handlePortfolioSelect(selectedPortfolio);
         }
       }
     };
     
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, [portfolios, portfolioDispatch]);
+  }, [portfolios, handlePortfolioSelect]);
   
   if (!activePortfolio) {
     return null;
@@ -100,12 +112,7 @@ export const PortfolioSwitcher = memo(function PortfolioSwitcher({
             {portfolios.map((portfolio, index) => (
               <DropdownMenuItem
                 key={portfolio.id}
-                onClick={() => {
-                  portfolioDispatch({
-                    type: "selected",
-                    portfolio: portfolio,
-                  });
-                }}
+                onClick={() => handlePortfolioSelect(portfolio)}
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
@@ -135,4 +142,4 @@ export const PortfolioSwitcher = memo(function PortfolioSwitcher({
       </SidebarMenuItem>
     </SidebarMenu>
   );
-});
+}

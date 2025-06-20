@@ -1,7 +1,7 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, ChartCandlestick, Edit, Trash2, Copy } from "lucide-react"
+import { ArrowUpDown, ChartCandlestick, Edit, Trash2, Copy, Eye } from "lucide-react"
 import { type TransactionType } from "~/datatypes/transaction"
 import { type PortfolioType } from "~/datatypes/portfolio"
 import { type CurrencyType } from "~/datatypes/currency"
@@ -529,12 +529,22 @@ export function createColumns(options?: ColumnsOptions): ColumnDef<TransactionTy
     enableHiding: false,
     cell: ({ row, table }) => {
       const transaction = row.original
+      const onViewTransaction = (table.options.meta as any)?.onViewTransaction
       const onEditTransaction = (table.options.meta as any)?.onEditTransaction
       const onCloneTransaction = (table.options.meta as any)?.onCloneTransaction
       const onDeleteTransaction = (table.options.meta as any)?.onDeleteTransaction
 
       return (
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onViewTransaction?.(transaction)}
+            title="View transaction"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"

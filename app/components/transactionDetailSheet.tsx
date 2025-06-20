@@ -44,7 +44,7 @@ interface TransactionDetailSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   transaction: TransactionType | null
-  mode: "edit" | "clone" | null
+  mode: "edit" | "clone" | "view" | null
   portfolios: PortfolioType[]
   currencies: CurrencyType[]
 }
@@ -248,6 +248,7 @@ export function TransactionDetailSheet({
   if (!transaction) return null
 
   const isLoading = fetcher.state === "submitting"
+  const isReadOnly = mode === "view"
 
   return (
     <>
@@ -255,12 +256,16 @@ export function TransactionDetailSheet({
         <SheetContent className="w-[90vw] sm:max-w-[600px] overflow-y-auto p-6">
           <SheetHeader className="space-y-3 px-2">
             <SheetTitle className="text-2xl">
-              {mode === "edit" ? "Edit Transaction" : "Clone Transaction"}
+              {mode === "edit" ? "Edit Transaction" : 
+               mode === "clone" ? "Clone Transaction" : 
+               "View Transaction"}
             </SheetTitle>
             <SheetDescription>
               {mode === "edit" 
                 ? "Make changes to this transaction" 
-                : "Create a copy of this transaction"
+                : mode === "clone"
+                ? "Create a copy of this transaction"
+                : "View transaction details"
               }
             </SheetDescription>
           </SheetHeader>
@@ -272,6 +277,7 @@ export function TransactionDetailSheet({
               <Select
                 value={portfolioId.toString()}
                 onValueChange={(value) => setPortfolioId(parseInt(value))}
+                disabled={isReadOnly}
               >
                 <SelectTrigger>
                   <SelectValue>
@@ -299,6 +305,7 @@ export function TransactionDetailSheet({
                       setDate(selectedDate)
                     }
                   }}
+                  disabled={isReadOnly}
                 />
                 <Input
                   type="time"
@@ -308,6 +315,7 @@ export function TransactionDetailSheet({
                   className="w-32"
                   placeholder="HH:MM:SS"
                   title="Use 24-hour format (HH:MM:SS)"
+                  disabled={isReadOnly}
                 />
               </div>
             </div>
@@ -318,6 +326,7 @@ export function TransactionDetailSheet({
               <Select
                 value={type}
                 onValueChange={(value) => setType(value as any)}
+                disabled={isReadOnly}
               >
                 <SelectTrigger>
                   <SelectValue>{type}</SelectValue>
@@ -344,6 +353,7 @@ export function TransactionDetailSheet({
                   value={amount}
                   onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
                   startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                  disabled={isReadOnly}
                 />
               </div>
             ) : (
@@ -385,6 +395,7 @@ export function TransactionDetailSheet({
                           No results found
                         </p>
                       }
+                      disabled={isReadOnly}
                     />
                   </div>
 
@@ -398,6 +409,7 @@ export function TransactionDetailSheet({
                         step="0.01"
                         value={quantity}
                         onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+                        disabled={isReadOnly}
                       />
                     </div>
                     <div className="space-y-2">
@@ -409,6 +421,7 @@ export function TransactionDetailSheet({
                         value={price}
                         onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
                         startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                        disabled={isReadOnly}
                       />
                     </div>
                   </div>
@@ -424,6 +437,7 @@ export function TransactionDetailSheet({
                         value={commission}
                         onChange={(e) => setCommission(parseFloat(e.target.value) || 0)}
                         startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                        disabled={isReadOnly}
                       />
                     </div>
                     <div className="space-y-2">
@@ -435,6 +449,7 @@ export function TransactionDetailSheet({
                         value={tax}
                         onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
                         startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                        disabled={isReadOnly}
                       />
                     </div>
                   </div>
@@ -450,6 +465,7 @@ export function TransactionDetailSheet({
                 placeholder="Add any additional notes..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                disabled={isReadOnly}
               />
             </div>
 
@@ -467,6 +483,7 @@ export function TransactionDetailSheet({
                     label: option.label,
                   })))
                 }}
+                disabled={isReadOnly}
               />
             </div>
 
@@ -477,6 +494,7 @@ export function TransactionDetailSheet({
                   id="recurrence-switch"
                   checked={showRecurrence}
                   onCheckedChange={setShowRecurrence}
+                  disabled={isReadOnly}
                 />
                 <Label htmlFor="recurrence-switch">Recurring Transaction</Label>
               </div>
@@ -487,6 +505,7 @@ export function TransactionDetailSheet({
                   <Select
                     value={recurrencePeriod}
                     onValueChange={(value) => setRecurrencePeriod(value as any)}
+                    disabled={isReadOnly}
                   >
                     <SelectTrigger className="w-[120px]">
                       <SelectValue>{recurrencePeriod}</SelectValue>
@@ -506,6 +525,7 @@ export function TransactionDetailSheet({
                     value={recurrenceHour}
                     onChange={(e) => setRecurrenceHour(parseInt(e.target.value) || 0)}
                     className="w-[80px]"
+                    disabled={isReadOnly}
                   />
                   <Label>hours</Label>
                 </div>
@@ -514,19 +534,22 @@ export function TransactionDetailSheet({
 
             {/* Action Buttons */}
             <div className="flex gap-2 pt-4">
-              <Button 
-                onClick={handleSave} 
-                disabled={isLoading}
-                className="flex-1"
-              >
-                {isLoading ? "Saving..." : mode === "edit" ? "Save Changes" : "Clone Transaction"}
-              </Button>
+              {!isReadOnly && (
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  {isLoading ? "Saving..." : mode === "edit" ? "Save Changes" : "Clone Transaction"}
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
                 disabled={isLoading}
+                className={isReadOnly ? "flex-1" : ""}
               >
-                Cancel
+                {isReadOnly ? "Close" : "Cancel"}
               </Button>
             </div>
           </div>

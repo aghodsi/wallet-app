@@ -1,4 +1,4 @@
-import { userPortfolios } from "~/stateManagement/portfolioContext";
+import { userPortfolios, usePortfolioDispatch } from "~/stateManagement/portfolioContext";
 import { FactCards } from "~/components/portfolio/factCardsComponents";
 import { ChartAreaInteractive } from "~/components/portfolio/chartsInteractiveComponent";
 import CalendarComponent from "~/components/calendarComponent";
@@ -9,7 +9,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import type { AssetType } from "~/datatypes/asset";
 import type { CurrencyType } from "~/datatypes/currency";
 import { useTransactionDialog } from "~/contexts/transactionDialogContext";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -35,12 +35,29 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 }
 
-export default function Portfolio({ loaderData }: Route.ComponentProps) {
+export default function Portfolio({ loaderData, params }: Route.ComponentProps) {
   const { transactions: loaderTransactions, error } = loaderData;
   const [timeRange, setTimeRange] = useState("1Y");
   const portfolios = userPortfolios();
+  const portfolioDispatch = usePortfolioDispatch();
   const selectedPortfolio = portfolios.find((p) => p.selected);
   const { currencies } = useTransactionDialog();
+
+  // Handle portfolio selection from URL parameter
+  useEffect(() => {
+    if (params?.portfolioId && portfolios.length > 0) {
+      const portfolioId = parseInt(params.portfolioId, 10);
+      const portfolioToSelect = portfolios.find(p => p.id === portfolioId);
+      
+      if (portfolioToSelect && !portfolioToSelect.selected) {
+        console.log('Selecting portfolio from URL:', portfolioToSelect);
+        portfolioDispatch({
+          type: 'selected',
+          portfolio: portfolioToSelect
+        });
+      }
+    }
+  }, [params?.portfolioId, portfolios, portfolioDispatch]);
 
   if (error) {
     return (
@@ -85,16 +102,16 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
 
   transactionQueries.forEach((query, index) => {
     if (query.isLoading) {
-      console.log(
-        `Loading transaction asset data for transaction ${index + 1} and asset ${query}...`
-      );
+      // console.log(
+      //   `Loading transaction asset data for transaction ${index + 1} and asset ${query}...`
+      // );
     } else if (query.isError) {
       console.error(
         `Error fetching asset data for transaction ${index + 1}:`,
         query.error
       );
     }
-    console.log(`Fetched asset data for transaction ${index + 1}:`, query.data);
+    //console.log(`Fetched asset data for transaction ${index + 1}:`, query.data);
   });
 
 

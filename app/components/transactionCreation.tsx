@@ -9,6 +9,7 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { use, useState, useEffect } from "react";
+import * as React from "react";
 import { Input } from "./ui/input";
 import MultipleSelector, { type Option } from "./ui/multiselect";
 import {
@@ -29,6 +30,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Toaster } from "./ui/sonner";
 import { toast } from "sonner";
 import { userPortfolios } from "~/stateManagement/portfolioContext";
+import { useTransactions } from "~/hooks/useTransactions";
 
 type TransactionCreationProps = {
   open: boolean;
@@ -55,10 +57,22 @@ export function TransactionCreation(props: TransactionCreationProps) {
   
   // Find the selected portfolio from context, fallback to props or first valid portfolio
   const selectedPortfolioFromContext = contextPortfolios.find((p: PortfolioType) => p.selected === true);
+  console.log("Selected Portfolio from Context:", selectedPortfolioFromContext);
   const initialPortfolioId = selectedPortfolioFromContext?.id || props.selectedPortfolioId || validPortfolios[0]?.id || 0;
+  console.log("Initial Portfolio ID:", initialPortfolioId);
   
   const [portfolioId, setPortfolioId] = useState(initialPortfolioId);
   const [targetPortfolioId, setTargetPortfolioId] = useState(initialPortfolioId);
+
+  // Sync portfolioId with context changes
+  // diaglog stays mounted, so we need to check if the context portfolio changes
+  useEffect(() => {
+    if (selectedPortfolioFromContext?.id && selectedPortfolioFromContext.id !== portfolioId) {
+      console.log("Updating portfolioId from context:", selectedPortfolioFromContext.id);
+      setPortfolioId(selectedPortfolioFromContext.id);
+      setTargetPortfolioId(selectedPortfolioFromContext.id);
+    }
+  }, [selectedPortfolioFromContext?.id, portfolioId]);
   const [date, setDate] = useState<Date>(new Date());
   const [time, setTime] = useState("10:30:00");
   const [mounted, setMounted] = useState(false);
@@ -94,6 +108,30 @@ export function TransactionCreation(props: TransactionCreationProps) {
 
   const [emptyText, setEmptyText] = useState("No results found");
 
+  // Get all transactions to extract existing tags
+  const { data: allTransactions } = useTransactions(-1);
+
+  // Extract unique tags from existing transactions
+  const availableTags = React.useMemo(() => {
+    if (!allTransactions) return [];
+    const uniqueTags = new Set<string>();
+    allTransactions.forEach(transaction => {
+      if (transaction.tags) {
+        // Split tags by comma and trim whitespace
+        const transactionTags = transaction.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+        transactionTags.forEach(tag => uniqueTags.add(tag));
+      }
+    });
+    return Array.from(uniqueTags).map(tag => ({
+      value: tag,
+      label: tag,
+      disable: false,
+      fixed: false,
+    }));
+  }, [allTransactions]);
+
+  console.log("Available Tags:", availableTags);
+
   // TanStack Query for asset search
   const { data: searchResults, isLoading } = useQuery({
     queryKey: ["assetSearch", searchQuery],
@@ -121,6 +159,34 @@ export function TransactionCreation(props: TransactionCreationProps) {
     enabled: !!searchQuery,
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
+
+  // Reset form function
+  const resetForm = () => {
+    setPortfolioId(initialPortfolioId);
+    setTargetPortfolioId(initialPortfolioId);
+    if (mounted) {
+      setDate(new Date());
+      setTime("10:30:00");
+    }
+    setType("Buy");
+    setAsset({} as Option);
+    setQuantity(0);
+    setPrice(0);
+    setCommission(0);
+    setTax(0);
+    setRecurrencePeriod("Month");
+    setRecurrenceTime("10:00");
+    setTags([]);
+    setNotes("");
+    setAmount(0);
+    setShowRecurrence(false);
+    setShowCustomCurrency(false);
+    setShowDifferentPortfolio(false);
+    setSearchQuery("");
+    setPortfolioError(false);
+    setAssetError(false);
+    setEmptyText("No results found");
+  };
 
   const handleCreate = () => {
     if (!portfolioId) {
@@ -181,29 +247,26 @@ export function TransactionCreation(props: TransactionCreationProps) {
       enabled: !!asset.value,
       staleTime: 15 * 60 * 1000, // 15 minutes
     });
-    // Reset form
-    setPortfolioId(initialPortfolioId);
-    setTargetPortfolioId(initialPortfolioId);
-    if (mounted) {
-      setDate(new Date());
-      setTime("10:30:00");
+    // Reset form after successful creation
+    resetForm();
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    props.openChange(false);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      // Dialog is being closed - reset form
+      resetForm();
     }
-    setType("Buy");
-    setAsset({} as Option);
-    setQuantity(0);
-    setPrice(0);
-    setCommission(0);
-    setTax(0);
-    setRecurrencePeriod("Month");
-    setRecurrenceTime("10:00");
-    setTags([]);
-    setNotes("");
-    setAmount(0);
+    props.openChange(open);
   };
 
   return (
     <>
-      <Dialog open={props.open} onOpenChange={props.openChange}>
+      <Dialog open={props.open} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-w-2xl overflow-y-scroll max-h-screen">
           <DialogHeader>
             <DialogTitle>Create a new transaction</DialogTitle>
@@ -299,7 +362,9 @@ export function TransactionCreation(props: TransactionCreationProps) {
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                  startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                  startIcon={convertCurrencyToIcon(
+                    validPortfolios.find(p => p.id === portfolioId)?.currency.code || "USD"
+                  )}
                   className="max-w-sm"
                 />
               </div>
@@ -425,7 +490,11 @@ export function TransactionCreation(props: TransactionCreationProps) {
                       onChange={(e) =>
                         setPrice(parseFloat(e.target.value) || 0)
                       }
-                      startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                      startIcon={convertCurrencyToIcon(
+                        showCustomCurrency 
+                          ? (currency?.code || "USD")
+                          : (validPortfolios.find(p => p.id === portfolioId)?.currency.code || "USD")
+                      )}
                       className="max-w-sm"
                     />
                   </div>
@@ -444,7 +513,11 @@ export function TransactionCreation(props: TransactionCreationProps) {
                       onChange={(e) =>
                         setCommission(parseFloat(e.target.value) || 0)
                       }
-                      startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                      startIcon={convertCurrencyToIcon(
+                        showCustomCurrency 
+                          ? (currency?.code || "USD")
+                          : (validPortfolios.find(p => p.id === portfolioId)?.currency.code || "USD")
+                      )}
                       className="max-w-sm"
                     />
                   </div>
@@ -458,7 +531,11 @@ export function TransactionCreation(props: TransactionCreationProps) {
                       placeholder="0.00"
                       value={tax}
                       onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                      startIcon={convertCurrencyToIcon(currency?.code || "USD")}
+                      startIcon={convertCurrencyToIcon(
+                        showCustomCurrency 
+                          ? (currency?.code || "USD")
+                          : (validPortfolios.find(p => p.id === portfolioId)?.currency.code || "USD")
+                      )}
                       className="max-w-sm"
                     />
                   </div>
@@ -532,7 +609,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
               placeholder="Select Tags"
               maxSelected={5}
               creatable={true}
-              defaultOptions={tags}
+              defaultOptions={availableTags}
               onChange={(selected) => {
                 setTags(
                   selected.map((option) => ({
@@ -589,7 +666,7 @@ export function TransactionCreation(props: TransactionCreationProps) {
           <DialogFooter>
             <Button onClick={handleCreate}>Create Transaction</Button>
             <Button
-              onClick={() => props.openChange(false)}
+              onClick={handleCancel}
               variant="destructive"
             >
               Cancel
