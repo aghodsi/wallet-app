@@ -7,8 +7,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  justLoggedIn: boolean;
   signOut: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  clearJustLoggedIn: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   const refreshAuth = async () => {
     try {
@@ -26,17 +29,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (sessionData.data) {
         console.log("✅ User authenticated:", sessionData.data.user);
+        const wasLoggedOut = !user;
         setSession(sessionData.data as Session);
         setUser(sessionData.data.user);
+        if (wasLoggedOut && !isLoading) {
+          setJustLoggedIn(true);
+        }
       } else {
         console.log("❌ No session data found");
         setSession(null);
         setUser(null);
+        setJustLoggedIn(false);
       }
     } catch (error) {
       console.error("❌ Auth check failed:", error);
       setSession(null);
       setUser(null);
+      setJustLoggedIn(false);
     } finally {
       setIsLoading(false);
     }
@@ -63,13 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authClient.signOut();
       setUser(null);
       setSession(null);
+      setJustLoggedIn(false);
     } catch (error) {
       console.error("Sign out failed:", error);
     }
   };
 
+  const clearJustLoggedIn = () => {
+    setJustLoggedIn(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut, refreshAuth }}>
+    <AuthContext.Provider value={{ user, session, isLoading, justLoggedIn, signOut, refreshAuth, clearJustLoggedIn }}>
       {children}
     </AuthContext.Provider>
   );

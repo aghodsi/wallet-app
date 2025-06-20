@@ -12,6 +12,7 @@ import { Separator } from "~/components/ui/separator";
 import { Toaster } from "~/components/ui/sonner";
 import { AuthGuard } from "~/components/AuthGuard";
 import { ErrorDisplay } from "~/components/ErrorBoundary";
+import type {Route} from "/types/+currencySettings"
 
 export function meta() {
   return [
@@ -20,7 +21,7 @@ export function meta() {
   ];
 }
 
-export async function loader() {
+export async function loader({ request, params }: Route.LoaderArgs) {
   try {
     const currencies = await fetchCurrencies();
 

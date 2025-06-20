@@ -365,6 +365,32 @@ export async function getAllAssetsWithDateRange() {
   return db.select().from(assetTable);
 }
 
+export async function getAssetsWithTransactionsForUser(userId: string) {
+  // Get unique asset symbols from transactions in user's portfolios
+  console.log("Fetching assets with transactions for user:", userId);
+  const assetsInTransactions = await db
+    .selectDistinct({
+      asset: transactionTable.asset,
+    })
+    .from(transactionTable)
+    .innerJoin(portfolioTable, eq(transactionTable.portfolioId, portfolioTable.id))
+    .where(eq(portfolioTable.userId, userId));
+
+  const assetSymbols = assetsInTransactions
+    .map(t => t.asset)
+    .filter(asset => asset && asset !== 'Cash'); // Filter out Cash and null values
+
+  if (assetSymbols.length === 0) {
+    return [];
+  }
+
+  // Get all asset data for these symbols
+  return db
+    .select()
+    .from(assetTable)
+    .where(inArray(assetTable.symbol, assetSymbols));
+}
+
 export async function createAsset(asset: AssetType) {
   return db.insert(assetTable).values({
     symbol: asset.symbol,

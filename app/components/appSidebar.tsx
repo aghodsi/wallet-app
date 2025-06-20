@@ -88,19 +88,19 @@ const data = {
 
     {
       name: "Portfolio Settings",
-      url: "/portfolio-settings",
+      url: "/portfolioSettings",
       icon: Settings,
       needsPortfolio: true,
     },
     {
       name: "Currency Settings",
-      url: "/currency-settings",
+      url: "/currencySettings",
       icon: Currency,
       needsPortfolio: false,
     },
     {
       name: "Assets Configuration",
-      url: "/assets-configuration",
+      url: "/assetsConfiguration",
       icon: Database,
       needsPortfolio: false,
     },
@@ -125,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const portfolios = userPortfolios();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
   const { user } = useAuth();
-
+  
   // Create modified actions with dialog handlers
   const modifiedActions = React.useMemo(() => {
     return data.actions.map(action => {
@@ -153,7 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1">
-          <TrendingUpDown className="h-6 w-6 text-primary" />
+          <Wallet className="h-6 w-6 text-primary" />
           <span className="font-semibold text-lg">Wallet Manager</span>
         </div>
         {user && <PortfolioSwitcher portfolios={portfolios} />}

@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog"
+import type { Route } from "/types/+recurringTransactions"
 
 interface CronRun {
   id: number
@@ -42,7 +43,7 @@ interface RecurringTransactionWithRuns extends TransactionType {
   nextRun?: string
 }
 
-export async function loader() {
+export async function loader({ request, params }: Route.LoaderArgs) {
   try {
     const recurringTransactions = await fetchRecurringTransactions()
     
