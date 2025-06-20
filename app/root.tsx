@@ -6,11 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-import {
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { QueryClient } from "@tanstack/react-query";
 import type { Route } from "./+types/root";
 import "./app.css";
 import {
@@ -18,14 +14,8 @@ import {
   fetchInstitutions,
 } from "./db/actions";
 import SidebarLayout from "./components/_sidebar_layout";
-import { PortfolioProvider } from "./stateManagement/portfolioContext";
-import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
-import { TransactionViewProvider } from "./contexts/transactionViewContext";
-import { CurrencyDisplayProvider } from "./contexts/currencyDisplayContext";
-import { TimezoneProvider } from "./contexts/timezoneContext";
-import { AuthProvider } from "./contexts/authContext";
+import { AppProviders } from "./providers/AppProviders";
 import { cronService } from "./services/cronService";
-import { ThemeProvider } from "./components/theme-provider";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -118,31 +108,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function App({ loaderData }: Route.ComponentProps) {
   const currencies = loaderData.allCurrencies;
   const institutions = loaderData.allInstitutions;
+  
   return (
-    <>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
-          <AuthProvider>
-            <div data-auth-state="authenticated" style={{ display: 'none' }}></div>
-            <PortfolioProvider>
-              {/* <StoreInitializer portfolios={[]} currencies={currencies} institutions={institutions} /> */}
-              <CurrencyDisplayProvider>
-                <TimezoneProvider>
-                  <TransactionDialogProvider currencies={currencies} institutions={institutions}>
-                    <TransactionViewProvider currencies={currencies}>
-                      <SidebarLayout>
-                        <Outlet />
-                      </SidebarLayout>
-                    </TransactionViewProvider>
-                  </TransactionDialogProvider>
-                </TimezoneProvider>
-              </CurrencyDisplayProvider>
-            </PortfolioProvider>
-          </AuthProvider>
-        </ThemeProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
-    </>
+    <AppProviders 
+      currencies={currencies} 
+      institutions={institutions} 
+      queryClient={queryClient}
+    >
+      <SidebarLayout>
+        <Outlet />
+      </SidebarLayout>
+    </AppProviders>
   );
 }
 

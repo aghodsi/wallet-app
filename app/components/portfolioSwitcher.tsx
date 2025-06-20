@@ -49,9 +49,9 @@ export function PortfolioSwitcher({
     });
     
     // Navigate to portfolio page with the portfolio ID if we're currently on a portfolio route
-    if (location.pathname.startsWith('/portfolio')) {
-      navigate(`/portfolio/${portfolio.id}`);
-    }
+    // if (location.pathname.startsWith('/portfolio')) {
+    //   navigate(`/portfolio/${portfolio.id}`);
+    // }
   }, [portfolioDispatch, navigate, location.pathname]);
   
 
