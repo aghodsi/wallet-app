@@ -1,15 +1,11 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { AssetType } from "~/datatypes/asset";
-import { userPortfolios } from "~/stateManagement/portfolioContext";
 import { useTimezone } from "~/contexts/timezoneContext";
 import { useMemo, useState, useEffect } from "react";
 import { apiGet, handleApiResponse } from "~/lib/api-client";
 
 // Hook to get all unique asset symbols from all portfolios
-function useAllAssetSymbols() {
-  const portfolios = userPortfolios();
-  const selectedPortfolio = portfolios.find((p) => p.selected);
-  
+function useAllAssetSymbols(selectedPortfolio: { id: number } | null) {
   // Fetch all transactions to get asset symbols
   const { data: transactions = [] } = useQuery({
     queryKey: ["transactions"],
@@ -31,8 +27,12 @@ function useAllAssetSymbols() {
   }, [transactions, selectedPortfolio]);
 }
 
-export function DataFreshnessIndicator() {
-  const assetSymbols = useAllAssetSymbols();
+interface DataFreshnessIndicatorProps {
+  selectedPortfolio?: { id: number } | null;
+}
+
+export function DataFreshnessIndicator({ selectedPortfolio }: DataFreshnessIndicatorProps) {
+  const assetSymbols = useAllAssetSymbols(selectedPortfolio);
   
   // Fetch asset data for all symbols
   const assetQueries = useQueries({

@@ -16,7 +16,7 @@ import {
 } from "~/components/ui/popover"
 import { useTimezone, COMMON_TIMEZONES } from "~/contexts/timezoneContext"
 
-export function TimezoneSelector() {
+export const TimezoneSelector = React.memo(function TimezoneSelector() {
   const { selectedTimezone, setTimezone } = useTimezone()
   const [open, setOpen] = React.useState(false)
   const [mounted, setMounted] = useState(false)
@@ -129,4 +129,4 @@ export function TimezoneSelector() {
       </PopoverContent>
     </Popover>
   )
-}
+})

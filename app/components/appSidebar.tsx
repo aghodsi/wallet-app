@@ -33,6 +33,7 @@ import { useDialogContext } from "~/contexts/transactionDialogContext"
 import { DataFreshnessIndicator } from "./dataFreshnessIndicator"
 import { TimezoneSelector } from "./timezoneSelector"
 import { useAuth } from "~/contexts/authContext"
+import { useMemo } from "react"
 
 const data = {
   user: {
@@ -106,7 +107,7 @@ const data = {
     },
     {
       name: "Recurring Transactions",
-      url: "/recurring-transactions",
+      url: "/recurringT ransactions",
       icon: Clock,
       needsPortfolio: true,
     },
@@ -121,13 +122,25 @@ const data = {
 }
 
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export const AppSidebar = React.memo(function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const portfolios = userPortfolios();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
   const { user } = useAuth();
-  
-  // Create modified actions with dialog handlers
-  const modifiedActions = React.useMemo(() => {
+
+  const selectedPortfolio = useMemo(() => 
+    portfolios.find(p => p.selected), 
+    [portfolios]
+  );
+
+  const portfolioCount = useMemo(() => portfolios.length, [portfolios.length]);
+
+  // Memoize static items to prevent recreation
+  const staticNavItems = useMemo(() => data.navItems, []);
+  const staticSettingsItems = useMemo(() => data.settingsNavItems, []);
+  const staticHomeItems = useMemo(() => data.home, []);
+
+  // Memoize modified actions to prevent recreation
+  const modifiedActions = useMemo(() => {
     return data.actions.map(action => {
       if (action.name === "Add Transaction") {
         return {
@@ -147,8 +160,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     });
   }, [openTransactionDialog, openPortfolioDialog]);
 
-
-
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -159,18 +170,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {user && <PortfolioSwitcher portfolios={portfolios} />}
       </SidebarHeader>
       <SidebarContent>
-        <NavComponent items={data.home} title={""} />
-        {user && <NavComponent items={modifiedActions} title={"Actions"} />}
-        {user && <NavComponent items={data.navItems} title={"Portfolio Activity"} />}
-        {user && <NavComponent items={data.settingsNavItems} title={"Configuration"} />}
-        {/* <NavComponentCollapsable items={data.settingsNavItems} title={"Configuration"} /> */}
+        <NavComponent items={staticHomeItems} title={""} portfolioCount={portfolioCount} />
+        {user && <NavComponent items={modifiedActions} title={"Actions"} portfolioCount={portfolioCount} />}
+        {user && <NavComponent items={staticNavItems} title={"Portfolio Activity"} portfolioCount={portfolioCount} />}
+        {user && <NavComponent items={staticSettingsItems} title={"Configuration"} portfolioCount={portfolioCount} />}
       </SidebarContent>
       <SidebarFooter>
         <TimezoneSelector />
-        <DataFreshnessIndicator />
+        <DataFreshnessIndicator selectedPortfolio={selectedPortfolio} />
         {user && <NavUser />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
-}
+});

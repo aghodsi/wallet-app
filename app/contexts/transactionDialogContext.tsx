@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useCallback, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { CurrencyType } from '~/datatypes/currency'
 import type { InstitutionType } from '~/datatypes/institution'
@@ -25,9 +25,9 @@ interface DialogProviderProps {
 export function DialogProvider({ children, currencies, institutions }: DialogProviderProps) {
   const [activeDialog, setActiveDialog] = useState<DialogType>(null)
 
-  const openTransactionDialog = () => setActiveDialog('transaction')
-  const openPortfolioDialog = () => setActiveDialog('portfolio')
-  const closeDialog = () => setActiveDialog(null)
+  const openTransactionDialog = useCallback(() => setActiveDialog('transaction'), [])
+  const openPortfolioDialog = useCallback(() => setActiveDialog('portfolio'), [])
+  const closeDialog = useCallback(() => setActiveDialog(null), [])
 
   return (
     <DialogContext.Provider value={{ 

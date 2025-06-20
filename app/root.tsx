@@ -25,7 +25,6 @@ import { TimezoneProvider } from "./contexts/timezoneContext";
 import { AuthProvider } from "./contexts/authContext";
 import { cronService } from "./services/cronService";
 import { ThemeProvider } from "./components/theme-provider";
-import { StoreInitializer } from "./components/storeInitializer";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -124,8 +123,8 @@ export default function App({ loaderData }: Route.ComponentProps) {
         <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
           <AuthProvider>
             <div data-auth-state="authenticated" style={{ display: 'none' }}></div>
-            <StoreInitializer />
             <PortfolioProvider>
+              {/* <StoreInitializer portfolios={[]} currencies={currencies} institutions={institutions} /> */}
               <CurrencyDisplayProvider>
                 <TimezoneProvider>
                   <TransactionDialogProvider currencies={currencies} institutions={institutions}>

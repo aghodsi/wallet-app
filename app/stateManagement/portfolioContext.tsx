@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { createContext, useContext, useReducer, useEffect, useState, useMemo } from 'react';
 import { useAuth } from '~/contexts/authContext';
 import type { PortfolioType } from '~/datatypes/portfolio';
 import { apiGet, handleApiResponse } from '~/lib/api-client';
@@ -7,16 +7,8 @@ export const PortfoliosContext = createContext([] as PortfolioType[]);
 export const PortfolioDispatchContext = createContext({} as React.Dispatch<PortfolioActionType>);
 
 export function PortfolioProvider({ children, initialPortfolios = [] }: { children: React.ReactNode, initialPortfolios?: PortfolioType[] }) {
-    const { user, isLoading: authLoading, session } = useAuth();
-
+  const { user, isLoading: authLoading, session } = useAuth();
   const [mounted, setMounted] = useState(false);
-
-  // Get stored selected portfolio ID from localStorage (only after mount)
-  const getStoredSelectedPortfolioId = (): number | null => {
-    if (!mounted || typeof window === 'undefined') return null;
-    const stored = localStorage.getItem('selectedPortfolioId');
-    return stored ? parseInt(stored, 10) : null;
-  };
 
   // Initialize portfolios with server-safe selection state
   const initializePortfolios = (portfolios: PortfolioType[]): PortfolioType[] => {
@@ -41,6 +33,10 @@ export function PortfolioProvider({ children, initialPortfolios = [] }: { childr
     initialPortfolios,
     initializePortfolios
   );
+
+  // Memoize the context values to prevent unnecessary re-renders
+  const portfoliosValue = useMemo(() => portfolios, [portfolios]);
+  const dispatchValue = useMemo(() => dispatch, []);
 
   // Set mounted flag and sync with localStorage after hydration
   useEffect(() => {
@@ -188,7 +184,7 @@ export function PortfolioProvider({ children, initialPortfolios = [] }: { childr
                 console.error('Failed to fetch default currency for All portfolio:', error);
               }
             }
-            
+            console.log("Dispatching portfolios:", mappedPortfolios);
             dispatch({ type: 'refresh', portfolios: mappedPortfolios });
           } catch (error) {
             console.error('Failed to fetch portfolios:', error);
@@ -213,10 +209,8 @@ export function PortfolioProvider({ children, initialPortfolios = [] }: { childr
   }, [portfolios, mounted]);
 
   return (
-    //This is all the protfolios that the user has 
-    <PortfoliosContext.Provider value={portfolios}>
-      {/* // This is the dispatch function to update the portfolios */}
-      <PortfolioDispatchContext.Provider value={dispatch}>
+    <PortfoliosContext.Provider value={portfoliosValue}>
+      <PortfolioDispatchContext.Provider value={dispatchValue}>
         {children}
       </PortfolioDispatchContext.Provider>
     </PortfoliosContext.Provider>
@@ -257,23 +251,42 @@ function portfolioReducer(portfolios: PortfolioType[], action: PortfolioActionTy
       return portfolios.filter(p => p.id !== action.portfolio!.id);
     }
     case 'selected': {
-      // This action is not modifying the portfolios, so we just return the current state
       console.log("Selected portfolio:", action.portfolio);
-      return portfolios.map(p => {
-        if (p.id === action.portfolio!.id){
-          return { ...p, selected: true };
-        } else {
-          return { ...p, selected: false };
-        }
-      });
+      
+      const newState = portfolios.map(p => ({
+        ...p,
+        selected: p.id === action.portfolio!.id
+      }));
+
+      // Use deep comparison to avoid unnecessary re-renders
+      const hasChanged = portfolios.some((p, index) => p.selected !== newState[index].selected);
+      if (!hasChanged) {
+        return portfolios; // No change, return same reference
+      }
+      return newState;
     }
     case 'reset': {
       console.log("Resetting portfolios:", action.portfolios);
-      return action.portfolios || [];
+      const newPortfolios = action.portfolios || [];
+      // Avoid re-render if resetting to empty and already empty
+      if (portfolios.length === 0 && newPortfolios.length === 0) {
+        return portfolios;
+      }
+      return newPortfolios;
     }
     case 'refresh': {
       console.log("Refreshing portfolios:", action.portfolios);
-      return action.portfolios || portfolios;
+      const newPortfolios = action.portfolios || [];
+      // Deep comparison to prevent unnecessary updates
+      if (portfolios.length === newPortfolios.length && 
+          portfolios.every((p, i) => 
+            p.id === newPortfolios[i]?.id && 
+            p.name === newPortfolios[i]?.name && 
+            p.selected === newPortfolios[i]?.selected
+          )) {
+        return portfolios; // Return same reference to prevent re-render
+      }
+      return newPortfolios;
     }
     default: {
       throw Error('Unknown action: ' + action.type);

@@ -1,5 +1,5 @@
-
-import { useEffect } from "react"
+import { memo } from "react"
+import { Link, NavLink } from "react-router"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -9,17 +9,14 @@ import {
   useSidebar,
 } from "~/components/ui/sidebar"
 import type { MenuItem } from "~/datatypes/menuItem"
-import { usePortfolioDispatch, userPortfolios } from "~/stateManagement/portfolioContext"
 
 type NavComponentProps = {
   items: MenuItem[],
   title: string
 }
 
-export function NavComponent(props: NavComponentProps) {
+export const NavComponent = memo(function NavComponent(props: NavComponentProps & { portfolioCount: number }) {
   const { isMobile } = useSidebar()
-  const portfolios = userPortfolios()
-  const portfolioDispatchContext = usePortfolioDispatch
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -31,58 +28,36 @@ export function NavComponent(props: NavComponentProps) {
               {item.onClick ? (
                 <button 
                   onClick={item.onClick}
-                  className={item.needsPortfolio && portfolios.length==0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
-                  tabIndex={item.needsPortfolio && portfolios.length==0  ? -1 : undefined}
-                  disabled={item.needsPortfolio && portfolios.length==0}
+                  className={item.needsPortfolio && props.portfolioCount === 0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
+                  tabIndex={item.needsPortfolio && props.portfolioCount === 0 ? -1 : undefined}
+                  disabled={item.needsPortfolio && props.portfolioCount === 0}
                 >
                   {item.icon && <item.icon />}
                   <span>{item.name}</span>
                 </button>
-              ) : (
-                <a href={item.url}
-                  className={item.needsPortfolio && portfolios.length==0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
-                  tabIndex={item.needsPortfolio && portfolios.length==0  ? -1 : undefined}>
+              ) : item.needsPortfolio && props.portfolioCount === 0 ? (
+                <span 
+                  className="pointer-events-none opacity-50 text-muted-foreground flex items-center gap-2"
+                  tabIndex={-1}
+                >
                   {item.icon && <item.icon />}
                   <span>{item.name}</span>
-                </a>
+                </span>
+              ) : (
+                <NavLink 
+                  to={item.url!}
+                  className={({ isActive }) => 
+                    isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+                  }
+                >
+                  {item.icon && <item.icon />}
+                  <span>{item.name}</span>
+                </NavLink>
               )}
             </SidebarMenuButton>
-            {/* <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuAction showOnHover>
-                  <MoreHorizontal />
-                  <span className="sr-only">More</span>
-                </SidebarMenuAction>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-48 rounded-lg"
-                side={isMobile ? "bottom" : "right"}
-                align={isMobile ? "end" : "start"}
-              >
-                <DropdownMenuItem>
-                  <Folder className="text-muted-foreground" />
-                  <span>View Project</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Forward className="text-muted-foreground" />
-                  <span>Share Project</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Trash2 className="text-muted-foreground" />
-                  <span>Delete Project</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu> */}
           </SidebarMenuItem>
         ))}
-        {/* <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
-            <MoreHorizontal className="text-sidebar-foreground/70" />
-            <span>More</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem> */}
       </SidebarMenu>
     </SidebarGroup>
   )
-}
+});

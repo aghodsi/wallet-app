@@ -1,6 +1,7 @@
 "use client"
 
 import { ChevronRight, type LucideIcon } from "lucide-react"
+import { NavLink } from "react-router"
 
 import {
   Collapsible,
@@ -59,10 +60,23 @@ export function NavComponentCollapsable(props: NavComponentCollapsableProps) {
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.name}>
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url} className={subItem.needsPortfolio && portfolios.length == 0 ? "pointer-events-none opacity-50 text-muted-foreground" : ""}
-                          tabIndex={subItem.needsPortfolio && portfolios.length == 0 ? -1 : undefined}>
-                          <span>{subItem.name}</span>
-                        </a>
+                        {subItem.needsPortfolio && portfolios.length === 0 ? (
+                          <span 
+                            className="pointer-events-none opacity-50 text-muted-foreground flex items-center gap-2"
+                            tabIndex={-1}
+                          >
+                            <span>{subItem.name}</span>
+                          </span>
+                        ) : (
+                          <NavLink 
+                            to={subItem.url!}
+                            className={({ isActive }) => 
+                              isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+                            }
+                          >
+                            <span>{subItem.name}</span>
+                          </NavLink>
+                        )}
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}

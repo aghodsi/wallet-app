@@ -1,4 +1,5 @@
 import * as React from "react";
+import { memo, useEffect } from "react";
 import { ChevronsUpDown, Plus } from "lucide-react";
 
 import {
@@ -19,46 +20,37 @@ import {
 import type { PortfolioType } from "~/datatypes/portfolio";
 import { convertTextToIcon } from "~/lib/iconHelper";
 import { usePortfolioDispatch } from "~/stateManagement/portfolioContext";
-import { useEffect, useState } from "react";
 import { useIsMac } from "~/hooks/useIsMac";
 import { useDialogContext } from "~/contexts/transactionDialogContext";
 
-export function PortfolioSwitcher({
+export const PortfolioSwitcher = memo(function PortfolioSwitcher({
   portfolios,
 }: {
   portfolios: PortfolioType[];
 }) {
+  const isMac = useIsMac();
   const { isMobile } = useSidebar();
   const portfolioDispatch = usePortfolioDispatch();
   const { openPortfolioDialog } = useDialogContext();
-  const [activePortfolio, setActivePortfolio] = useState(
-    portfolios.find((p) => p.selected) || null
-  );
-
-  const isMac = useIsMac();
   
-  // Update activePortfolio when portfolios prop changes
-  useEffect(() => {
-    const selectedPortfolio = portfolios.find((p) => p.selected);
-    if (selectedPortfolio) {
-      setActivePortfolio(selectedPortfolio);
-    }
-  }, [portfolios]);
+  // Get active portfolio directly from context state
+  const activePortfolio = React.useMemo(() => 
+    portfolios.find((p) => p.selected) || portfolios.find(p => p.id === -1),
+    [portfolios]
+  );
+  
 
-  if (!activePortfolio) {
-    return null;
-  }
 
+  
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const numbersArray = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
       if (e.key in numbersArray && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         
-        const index = Number.parseInt(e.key, 10) - 1; // Convert key to index (0-8)
+        const index = Number.parseInt(e.key, 10) - 1;
         if (index >= 0 && index < portfolios.length) {
           const selectedPortfolio = portfolios[index];
-          setActivePortfolio(selectedPortfolio);
           portfolioDispatch({
             type: "selected",
             portfolio: selectedPortfolio,
@@ -66,11 +58,15 @@ export function PortfolioSwitcher({
         }
       }
     };
-
+    
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, [portfolios, portfolioDispatch]);
-
+  
+  if (!activePortfolio) {
+    return null;
+  }
+  
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -105,7 +101,6 @@ export function PortfolioSwitcher({
               <DropdownMenuItem
                 key={portfolio.id}
                 onClick={() => {
-                  setActivePortfolio(portfolio);
                   portfolioDispatch({
                     type: "selected",
                     portfolio: portfolio,
@@ -140,4 +135,4 @@ export function PortfolioSwitcher({
       </SidebarMenuItem>
     </SidebarMenu>
   );
-}
+});
