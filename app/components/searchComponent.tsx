@@ -35,7 +35,7 @@ import { useTheme } from "~/components/theme-provider";
 import { formatDate } from "~/lib/dateUtils";
 import { AssetDetailSheet } from "~/components/assetDetailSheet";
 import type { AssetType } from "~/datatypes/asset";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "~/contexts/authContext";
 
 export function SearchComponent() {
@@ -47,7 +47,8 @@ export function SearchComponent() {
   const navigate = useNavigate();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
   const { setTheme } = useTheme();
-  const { signOut } = useAuth();
+  const { signOut, user, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const portfolios = userPortfolios();
   
   // Check if there are any real portfolios (excluding "All" portfolio with id -1)
@@ -124,6 +125,30 @@ export function SearchComponent() {
     setOpen(false);
     setSelectedAssetSymbol(assetSymbol);
   };
+
+  // Effect to handle user login and refresh data
+  useEffect(() => {
+    if (!authLoading && user) {
+      // User has logged in - invalidate and refetch user-specific queries
+      console.log('🔄 User logged in, refreshing portfolio data in search component');
+      
+      // Invalidate user-specific queries to trigger fresh data fetch
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey[0] as string;
+          return [
+            'transactions', 
+            'portfolios'
+          ].includes(queryKey);
+        }
+      });
+      
+      // Clear any stale component state
+      setSelectedAsset(null);
+      setSelectedAssetSymbol("");
+      setIsAssetSheetOpen(false);
+    }
+  }, [user, authLoading, queryClient]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -258,7 +283,7 @@ export function SearchComponent() {
             <CommandItem 
               onSelect={hasRealPortfolios ? () => {
                 setOpen(false);
-                navigate('/portfolio-settings');
+                navigate('/portfolioSettings');
               } : undefined}
               disabled={!hasRealPortfolios}
             >
@@ -270,7 +295,7 @@ export function SearchComponent() {
             </CommandItem>
             <CommandItem onSelect={() => {
               setOpen(false);
-              navigate('/currency-settings');
+              navigate('/currencySettings');
             }}>
               <Currency className="mr-2 h-4 w-4" />
               <span>Currency Settings</span>
@@ -278,7 +303,7 @@ export function SearchComponent() {
             <CommandItem 
               onSelect={hasRealPortfolios ? () => {
                 setOpen(false);
-                navigate('/recurring-transactions');
+                navigate('/recurringTransactions');
               } : undefined}
               disabled={!hasRealPortfolios}
             >
@@ -330,6 +355,26 @@ export function SearchComponent() {
           <CommandGroup heading="Account">
             <CommandItem onSelect={async () => {
               setOpen(false);
+              
+              // Clear all user-bound data from React Query cache
+              queryClient.removeQueries({ 
+                predicate: (query) => {
+                  const queryKey = query.queryKey[0] as string;
+                  // Remove user-specific queries but keep global data like currencies and institutions
+                  return [
+                    'transactions', 
+                    'portfolios', 
+                    'assetFetch', 
+                    'assetSearch'
+                  ].includes(queryKey);
+                }
+              });
+              
+              // Clear component state
+              setSelectedAsset(null);
+              setSelectedAssetSymbol("");
+              setIsAssetSheetOpen(false);
+              
               await signOut();
               navigate('/');
             }}>

@@ -164,7 +164,7 @@ export const AppSidebar = React.memo(function AppSidebar({ ...props }: React.Com
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1">
-          <Wallet className="h-6 w-6 text-primary" />
+          <img src="/myna2.png" alt="Myna Logo" className="h-8 w-8 rounded-md" />
           <span className="font-semibold text-lg">Wallet Manager</span>
         </div>
         {user && <PortfolioSwitcher portfolios={portfolios} />}

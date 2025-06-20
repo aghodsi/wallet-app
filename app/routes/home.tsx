@@ -385,8 +385,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           {/* Header section with proper spacing */}
           <div className="text-center space-y-4">
             <div className="flex items-center justify-center mb-6">
-              <div className="rounded-full bg-primary/10 p-4">
-                <Wallet className="h-12 w-12 text-primary" />
+              <div className=" p-4">
+                {/* <Wallet className="h-12 w-12 text-primary" /> */}
+                <img src="/myna2.png" alt="Myna Logo" className="h-32 w-32 rounded-lg" />
               </div>
             </div>
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
