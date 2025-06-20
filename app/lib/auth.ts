@@ -7,6 +7,16 @@ import { userTable, sessionTable, accountTable, verificationTable } from "~/db/s
 const restrictedUsernames = ["admin", "root", "superuser", "administrator", "test", "guest", "anonymous", "support", "info", "contact", "webmaster", "sysadmin", "moderator", "owner", "developer", "manager", "staff", "team", "user", "member", "client", "customer", "service", "sales", "marketing", "finance", "hr", "it", "ops", "legal", "compliance", "security", "support", "helpdesk", "serviceaccount", "automation", "bot", "script", "cron", "scheduler", "taskrunner", "background", "worker", "process", "daemon", "serviceuser", "systemuser", "applicationuser", "wallet", "apiuser", "integration", "connector", "sync", "syncuser", "syncaccount", "syncservice", "syncbot", "syncdaemon", "syncworker", "syncprocess", "syncscript", "synccron", "synctaskrunner", "syncscheduler"];
 
 export const auth = betterAuth({
+  user:{
+    additionalFields: {
+      defaultCurrency: {
+        type: "number",
+        defaultValue: 1,
+        input: true
+      }
+
+    }
+  },
   database: drizzleAdapter(db, {
     provider: "mysql",
     schema: {

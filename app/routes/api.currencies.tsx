@@ -1,4 +1,4 @@
-import { updateCurrency, updateCurrencyExchangeRates } from "~/db/actions";
+import { updateCurrency, updateCurrencyExchangeRates, updateUserDefaultCurrency } from "~/db/actions";
 import { withAuth } from "~/lib/auth-middleware";
 
 export async function action({ request }: { request: Request }) {
@@ -10,7 +10,11 @@ export async function action({ request }: { request: Request }) {
       if (action === "setDefaultCurrency") {
         const currencyId = parseInt(formData.get("currencyId") as string);
         
+        // Update the global default currency
         await updateCurrency(currencyId, { isDefault: true });
+        
+        // Update the user's default currency
+        await updateUserDefaultCurrency(authData.user.id, currencyId);
         
         return { success: true, action: "setDefaultCurrency" };
       }

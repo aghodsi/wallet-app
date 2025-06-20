@@ -348,14 +348,15 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
         <FactCards 
           transactions={transactions}
           assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
-          currency={selectedPortfolio?.currency?.code || "USD"}
+          currency={selectedPortfolio?.currency?.code || currencies.find(c => c.isDefault)?.code || "USD"}
           timeRange={timeRangeLabels[timeRange as keyof typeof timeRangeLabels]}
           selectedPortfolio={selectedPortfolio}
+          currencies={currencies}
         />
         <div className="px-4 lg:px-6">
           <ChartAreaInteractive 
             data={chartData} 
-            currency={selectedPortfolio?.currency?.code || "USD"} 
+            currency={selectedPortfolio?.currency?.code || currencies.find(c => c.isDefault)?.code || "USD"} 
             timeRange={timeRange}
           />
         </div>
@@ -376,7 +377,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
                 transactions={transactions}
                 assets={transactionQueries.map(q => q.data).filter(Boolean) as AssetType[]}
                 timeRange={timeRange}
-                currency={selectedPortfolio?.currency?.code || "USD"}
+                currency={selectedPortfolio?.currency?.code || currencies.find(c => c.isDefault)?.code || "USD"}
               />
             </div>
           </div>

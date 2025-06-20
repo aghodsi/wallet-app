@@ -22,7 +22,7 @@ import type { AssetType } from "~/datatypes/asset"
 import type { PortfolioType } from "~/datatypes/portfolio"
 import type { CurrencyType } from "~/datatypes/currency"
 import { useMemo } from "react"
-import { convertCurrency, formatCurrency as formatCurrencyUtil } from "~/lib/currencyUtils"
+import { convertCurrency, formatCurrency as formatCurrencyUtil, getDefaultCurrency } from "~/lib/currencyUtils"
 
 interface FactCardsProps {
   transactions: TransactionType[];
@@ -30,6 +30,7 @@ interface FactCardsProps {
   currency?: string;
   timeRange?: string;
   selectedPortfolio?: PortfolioType;
+  currencies?: CurrencyType[];
 }
 
 export function FactCards({
@@ -37,11 +38,15 @@ export function FactCards({
   assets,
   currency = "USD",
   timeRange = "All time",
-  selectedPortfolio
+  selectedPortfolio,
+  currencies = []
 }: FactCardsProps) {
   // Calculate stats from transactions with currency conversion
   const calculatedStats = useMemo(() => {
-    if (!selectedPortfolio?.currency) {
+    // For "All" portfolio or when no portfolio currency is available, use user's default currency as fallback
+    const portfolioCurrency = selectedPortfolio?.currency || getDefaultCurrency(currencies);
+
+    if (!transactions || transactions.length === 0) {
       return {
         totalInvestment: 0,
         totalCash: 0,
@@ -52,7 +57,7 @@ export function FactCards({
       };
     }
 
-    const portfolioCurrency = selectedPortfolio.currency;
+    // portfolioCurrency is already defined above
     const nonHousekeepingTransactions = transactions.filter(t => !t.isHousekeeping);
     
     // Helper function to convert transaction amounts to portfolio currency
@@ -172,7 +177,7 @@ export function FactCards({
     });
 
     // For Investment portfolios, ensure cash cannot be negative
-    if (selectedPortfolio.type === "Investment" && totalCash < 0) {
+    if (selectedPortfolio?.type === "Investment" && totalCash < 0) {
       totalCash = 0;
     }
     
@@ -184,11 +189,12 @@ export function FactCards({
       currentPortfolioValue,
       transactionCount,
     };
-  }, [transactions, selectedPortfolio, assets]);
+  }, [transactions, selectedPortfolio, assets, currencies]);
 
   // Generate country data from transactions using asset information with currency conversion
   const countryData = useMemo(() => {
-    if (!selectedPortfolio?.currency) return [];
+    // Use fallback currency for "All" portfolio or when no portfolio currency is available
+    const portfolioCurrency = selectedPortfolio?.currency || getDefaultCurrency(currencies);
 
     // Map exchange names to countries
     const exchangeToCountry: Record<string, string> = {
@@ -206,7 +212,7 @@ export function FactCards({
       'SWX': 'Switzerland',
     };
     
-    const portfolioCurrency = selectedPortfolio.currency;
+    // portfolioCurrency is already defined above
     const countryMap = new Map<string, number>();
     
     // Helper function to convert transaction amounts to portfolio currency
@@ -245,11 +251,12 @@ export function FactCards({
       }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5); // Top 5 countries
-  }, [transactions, assets, selectedPortfolio]);
+  }, [transactions, assets, selectedPortfolio, currencies]);
 
   // Generate asset allocation data from transactions using asset information with currency conversion
   const assetAllocationData = useMemo(() => {
-    if (!selectedPortfolio?.currency) return [];
+    // Use fallback currency for "All" portfolio or when no portfolio currency is available
+    const portfolioCurrency = selectedPortfolio?.currency || getDefaultCurrency(currencies);
 
     // Map asset symbols to asset classes based on instrument type or symbol patterns
     const getAssetClass = (asset?: AssetType) => {
@@ -285,7 +292,7 @@ export function FactCards({
       return 'Stocks';
     };
     
-    const portfolioCurrency = selectedPortfolio.currency;
+    // portfolioCurrency is already defined above
     const allocationMap = new Map<string, number>();
     
     // Helper function to convert transaction amounts to portfolio currency
@@ -327,7 +334,7 @@ export function FactCards({
         };
       })
       .sort((a, b) => b.amount - a.amount);
-  }, [transactions, assets, selectedPortfolio]);
+  }, [transactions, assets, selectedPortfolio, currencies]);
 
   // Calculate percentages for asset allocation
   const assetAllocationWithPercentages = useMemo(() => {

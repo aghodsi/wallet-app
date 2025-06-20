@@ -1,6 +1,5 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { AssetType } from "~/datatypes/asset";
-import { useTimezone } from "~/contexts/timezoneContext";
 import { useMemo, useState, useEffect } from "react";
 import { apiGet, handleApiResponse } from "~/lib/api-client";
 
@@ -32,7 +31,7 @@ interface DataFreshnessIndicatorProps {
 }
 
 export function DataFreshnessIndicator({ selectedPortfolio }: DataFreshnessIndicatorProps) {
-  const assetSymbols = useAllAssetSymbols(selectedPortfolio);
+  const assetSymbols = useAllAssetSymbols(selectedPortfolio ?? null);
   
   // Fetch asset data for all symbols
   const assetQueries = useQueries({

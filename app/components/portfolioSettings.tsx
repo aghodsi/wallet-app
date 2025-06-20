@@ -2,7 +2,7 @@ import type { PortfolioType } from "~/datatypes/portfolio";
 import type { InstitutionType } from "~/datatypes/institution";
 import type { CurrencyType } from "~/datatypes/currency";
 import { useState, useEffect, useRef } from "react";
-import { useFetcher } from "react-router";
+import { Link, useFetcher, useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -37,14 +37,15 @@ export function PortfolioSettings({
   institutions,
   currencies,
 }: PortfolioSettingsProps) {
+  let navigate = useNavigate();
   const contextPortfolios = userPortfolios();
   const portfolioDispatch = usePortfolioDispatch();
   const fetcher = useFetcher();
   const { openPortfolioDialog } = useDialogContext();
-  
+
   // Find the currently selected portfolio from context
   const currentPortfolio = contextPortfolios.find(p => p.selected);
-  
+
   // Check if there are any real portfolios (excluding "All" portfolio with id -1)
   const hasRealPortfolios = contextPortfolios.some(p => p.id !== -1);
 
@@ -66,8 +67,8 @@ export function PortfolioSettings({
       setSymbol(currentPortfolio.symbol);
       setInstitution(currentPortfolio.institution);
       setType(currentPortfolio.type);
-      setTags(currentPortfolio.tags ? 
-        currentPortfolio.tags.split(",").map(tag => ({ value: tag, label: tag })) : 
+      setTags(currentPortfolio.tags ?
+        currentPortfolio.tags.split(",").map(tag => ({ value: tag, label: tag })) :
         []
       );
     } else {
@@ -123,10 +124,10 @@ export function PortfolioSettings({
   useEffect(() => {
     if (fetcher.data && fetcher.state === 'idle' && fetcher.data !== lastProcessedDataRef.current) {
       lastProcessedDataRef.current = fetcher.data;
-      
+
       if (fetcher.data.ok) {
         toast.success("Portfolio settings updated successfully!");
-        
+
         // Update the portfolio in context with current form values
         if (currentPortfolio && institution) {
           const updatedPortfolio: PortfolioType = {
@@ -138,7 +139,7 @@ export function PortfolioSettings({
             institution,
             tags: tags.map((tag) => tag.value).join(","),
           };
-          
+
           portfolioDispatch({
             type: "changed",
             portfolio: updatedPortfolio,
@@ -164,7 +165,7 @@ export function PortfolioSettings({
               <p className="text-muted-foreground mb-4">
                 You need to create at least one portfolio before you can access portfolio settings.
               </p>
-              <Button 
+              <Button
                 onClick={openPortfolioDialog}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
@@ -179,47 +180,47 @@ export function PortfolioSettings({
 
   // Special case for "All" portfolio (id === -1)
   if (!currentPortfolio || currentPortfolio.id === -1) {
+    // Get the user's default currency (the one marked as default)
+    const userDefaultCurrency = currencies.find(c => c.isDefault) || currencies[0];
+
     return (
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>Global Settings</CardTitle>
+            <CardTitle>All Portfolios Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="global-currency-select">
-                Default Currency for All Portfolios View
-              </Label>
-              <Select
-                key="global-currency-select"
-                value={currency.code}
-                onValueChange={(value) => {
-                  const selectedCurrency = currencies.find(
-                    (c) => c.code === value
-                  );
-                  if (selectedCurrency) {
-                    setCurrency(selectedCurrency);
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Currency">
-                    {currency ? `${currency.name} (${currency.symbol})` : "Select Currency"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {currencies.map((curr) => (
-                    <SelectItem key={curr.id} value={curr.code}>
-                      {curr.name} ({curr.symbol})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="text-center py-8">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2">No Settings to Configure</h3>
+                <p className="text-muted-foreground mb-4">
+                  The "All" portfolios view doesn't have individual settings to configure.
+                  It displays data from all your portfolios combined.
+                </p>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                <h4 className="font-medium mb-2">Default Currency</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  The default currency for calculations and display is:
+                </p>
+                <div className="text-lg font-semibold">
+                  {userDefaultCurrency ? `${userDefaultCurrency.symbol} ${userDefaultCurrency.code} - ${userDefaultCurrency.name}` : "Not configured"}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  You can configure your default currency and exchange rates on the currency settings page.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/currencySettings")}
+                >
+                  Go to Currency Settings
+                </Button>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              This setting affects the display currency when viewing all portfolios together. 
-              Individual portfolio currencies remain unchanged.
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -334,11 +335,11 @@ export function PortfolioSettings({
               value={
                 institution
                   ? [
-                      {
-                        value: institution.id.toString(),
-                        label: institution.name,
-                      },
-                    ]
+                    {
+                      value: institution.id.toString(),
+                      label: institution.name,
+                    },
+                  ]
                   : []
               }
               onChange={(selected) => {
@@ -382,14 +383,14 @@ export function PortfolioSettings({
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={fetcher.state === "submitting"}
             >
               {fetcher.state === "submitting" ? "Saving..." : "Save Changes"}
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 // Reset form to current portfolio values
                 if (currentPortfolio) {
@@ -398,8 +399,8 @@ export function PortfolioSettings({
                   setSymbol(currentPortfolio.symbol);
                   setInstitution(currentPortfolio.institution);
                   setType(currentPortfolio.type);
-                  setTags(currentPortfolio.tags ? 
-                    currentPortfolio.tags.split(",").map(tag => ({ value: tag, label: tag })) : 
+                  setTags(currentPortfolio.tags ?
+                    currentPortfolio.tags.split(",").map(tag => ({ value: tag, label: tag })) :
                     []
                   );
                 }

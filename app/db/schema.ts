@@ -113,6 +113,7 @@ export const userTable = mysqlTable('user', {
   image: varchar({ length: 255 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+  defaultCurrency: int('default_currency').references(() => currencyTable.id, { onDelete: 'set null' }).default(1), // Default to USD
 });
 
 export const sessionTable = mysqlTable('session', {

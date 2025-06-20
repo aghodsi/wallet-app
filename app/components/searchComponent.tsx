@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   Monitor,
+  LogOut,
 } from "lucide-react";
 
 import {
@@ -35,6 +36,7 @@ import { formatDate } from "~/lib/dateUtils";
 import { AssetDetailSheet } from "~/components/assetDetailSheet";
 import type { AssetType } from "~/datatypes/asset";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "~/contexts/authContext";
 
 export function SearchComponent() {
   const [open, setOpen] = useState(false);
@@ -45,6 +47,7 @@ export function SearchComponent() {
   const navigate = useNavigate();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
   const { setTheme } = useTheme();
+  const { signOut } = useAuth();
   const portfolios = userPortfolios();
   
   // Check if there are any real portfolios (excluding "All" portfolio with id -1)
@@ -318,6 +321,20 @@ export function SearchComponent() {
             }}>
               <Monitor className="mr-2 h-4 w-4" />
               <span>System Theme</span>
+            </CommandItem>
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          {/* Account Section */}
+          <CommandGroup heading="Account">
+            <CommandItem onSelect={async () => {
+              setOpen(false);
+              await signOut();
+              navigate('/');
+            }}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log Out</span>
             </CommandItem>
           </CommandGroup>
         </CommandList>

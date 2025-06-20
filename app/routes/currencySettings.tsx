@@ -87,7 +87,7 @@ export default function CurrencySettings({ loaderData }: ComponentProps) {
         toast.error(`Error: ${errorMessage}`);
       } else {
         if (fetcher.data.action === "setDefaultCurrency") {
-          toast.success("Default currency updated successfully!");
+          toast.success("Default currency and user preference updated successfully!");
         } else if (fetcher.data.action === "updateExchangeRates") {
           toast.success("Exchange rates updated successfully!");
         }

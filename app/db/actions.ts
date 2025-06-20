@@ -5,6 +5,7 @@ import {
   portfolioTable,
   transactionTable,
   cronRuns,
+  userTable,
 } from "./schema";
 import { eq, inArray, desc, ne, and } from "drizzle-orm";
 import type { InstitutionType } from "~/datatypes/institution";
@@ -749,6 +750,29 @@ export async function logCronRun(
     console.error("Error logging cron run:", error);
     throw new Error(
       `Failed to log cron run: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function updateUserDefaultCurrency(userId: string, currencyId: number) {
+  try {
+    console.log("Updating user default currency:", userId, currencyId);
+    
+    await db
+      .update(userTable)
+      .set({ 
+        defaultCurrency: currencyId,
+        updatedAt: new Date()
+      })
+      .where(eq(userTable.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating user default currency:", error);
+    throw new Error(
+      `Failed to update user default currency: ${
         error instanceof Error ? error.message : "Unknown error"
       }`
     );
