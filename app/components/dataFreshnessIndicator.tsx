@@ -3,6 +3,7 @@ import type { AssetType } from "~/datatypes/asset";
 import { userPortfolios } from "~/stateManagement/portfolioContext";
 import { useTimezone } from "~/contexts/timezoneContext";
 import { useMemo, useState, useEffect } from "react";
+import { apiGet, handleApiResponse } from "~/lib/api-client";
 
 // Hook to get all unique asset symbols from all portfolios
 function useAllAssetSymbols() {
@@ -13,11 +14,8 @@ function useAllAssetSymbols() {
   const { data: transactions = [] } = useQuery({
     queryKey: ["transactions"],
     queryFn: async () => {
-      const res = await fetch("/api/transactions");
-      if (!res.ok) {
-        throw new Error(`Error fetching transactions: ${res.statusText}`);
-      }
-      return res.json();
+      const response = await apiGet("/api/transactions");
+      return handleApiResponse(response);
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

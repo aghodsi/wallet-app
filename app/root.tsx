@@ -213,6 +213,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
           <AuthProvider>
+            <div data-auth-state="authenticated" style={{ display: 'none' }}></div>
             <PortfolioProvider initialPortfolios={portfolios}>
               <CurrencyDisplayProvider>
                 <TimezoneProvider>

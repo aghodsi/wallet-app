@@ -5,6 +5,7 @@ import { useDialogContext } from "~/contexts/transactionDialogContext"
 import { userPortfolios } from "~/stateManagement/portfolioContext"
 import type { TransactionType } from "~/datatypes/transaction"
 import type { PortfolioType } from "~/datatypes/portfolio"
+import { apiPost, handleApiResponse } from "~/lib/api-client"
 
 export function GlobalDialogs() {
   const { activeDialog, closeDialog, currencies, institutions } = useDialogContext()
@@ -18,16 +19,8 @@ export function GlobalDialogs() {
       const formData = new FormData()
       formData.append("transaction", JSON.stringify(transactionData))
       
-      const response = await fetch("/api/transactions", {
-        method: "POST",
-        body: formData,
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to create transaction")
-      }
-      
-      return response.json()
+      const response = await apiPost("/api/transactions", formData)
+      return handleApiResponse(response)
     },
     onSuccess: () => {
       // Invalidate and refetch transactions
@@ -48,16 +41,8 @@ export function GlobalDialogs() {
       const formData = new FormData()
       formData.append("portfolio", JSON.stringify(portfolioData))
       
-      const response = await fetch("/createPortfolio", {
-        method: "POST",
-        body: formData,
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to create portfolio")
-      }
-      
-      return response.json()
+      const response = await apiPost("/createPortfolio", formData)
+      return handleApiResponse(response)
     },
     onSuccess: () => {
       // Invalidate and refetch portfolios

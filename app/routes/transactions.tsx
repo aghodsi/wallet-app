@@ -17,6 +17,9 @@ import { TransactionDetailSheet } from "~/components/transactionDetailSheet"
 import { useTransactionDialog } from "~/contexts/transactionDialogContext"
 import { useCurrencyDisplay } from "~/contexts/currencyDisplayContext"
 import type { Route } from "./+types/transactions"
+import { apiDelete, handleApiResponse } from "~/lib/api-client"
+import { AuthGuard } from "~/components/AuthGuard"
+import { ErrorDisplay } from "~/components/ErrorBoundary"
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   try {
@@ -168,13 +171,8 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
 
   const handleDeleteTransaction = async (transactionId: number) => {
     try {
-      const response = await fetch(`/api/transactions/${transactionId}`, {
-        method: 'DELETE',
-      })
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to delete transaction' }))
-        throw new Error(errorData.error || 'Failed to delete transaction')
-      }
+      const response = await apiDelete(`/api/transactions/${transactionId}`)
+      await handleApiResponse(response)
       // Refresh the page to show updated data
       window.location.reload()
     } catch (error) {
@@ -185,16 +183,22 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
 
   if (error) {
     return (
-      <main className="pt-16 p-4 container mx-auto">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">{error}</div>
-        </div>
-      </main>
+      <AuthGuard>
+        <main className="pt-16 p-4 container mx-auto">
+          <ErrorDisplay 
+            error={error}
+            title="Failed to Load Transactions"
+            description="There was an issue loading your transaction data."
+            onRetry={() => window.location.reload()}
+          />
+        </main>
+      </AuthGuard>
     )
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
+    <AuthGuard>
+      <main className="pt-16 p-4 container mx-auto">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div className="flex-1">
           <div>
@@ -257,6 +261,7 @@ export default function Transactions({ loaderData }: Route.ComponentProps) {
         currencies={currencies}
       />
 
-    </main>
+      </main>
+    </AuthGuard>
   )
 }

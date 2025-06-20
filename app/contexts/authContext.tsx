@@ -44,6 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshAuth();
+
+    // Listen for auth refresh events (triggered by 401 responses)
+    const handleAuthRefresh = () => {
+      console.log("🔄 Auth refresh requested by API client");
+      refreshAuth();
+    };
+
+    window.addEventListener('auth-refresh-needed', handleAuthRefresh);
+    
+    return () => {
+      window.removeEventListener('auth-refresh-needed', handleAuthRefresh);
+    };
   }, []);
 
   const signOut = async () => {

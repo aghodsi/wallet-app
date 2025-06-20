@@ -10,6 +10,8 @@ import { Label } from "~/components/ui/label";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { Toaster } from "~/components/ui/sonner";
+import { AuthGuard } from "~/components/AuthGuard";
+import { ErrorDisplay } from "~/components/ErrorBoundary";
 
 export function meta() {
   return [
@@ -19,21 +21,27 @@ export function meta() {
 }
 
 export async function loader() {
-  const currencies = await fetchCurrencies();
+  try {
+    const currencies = await fetchCurrencies();
 
-  const currenciesWithType = currencies.map((c) => ({
-    ...c,
-    exchangeRate: c.exchangeRate || 1,
-    isDefault: c.isDefault || false,
-  })) as CurrencyType[];
+    const currenciesWithType = currencies.map((c) => ({
+      ...c,
+      exchangeRate: c.exchangeRate || 1,
+      isDefault: c.isDefault || false,
+    })) as CurrencyType[];
 
-  return {
-    currencies: currenciesWithType,
-  };
+    return {
+      currencies: currenciesWithType,
+    };
+  } catch (error) {
+    console.error("Error loading currency settings:", error);
+    return { currencies: [], error: "Failed to load currency settings" };
+  }
 }
 
 interface LoaderData {
   currencies: CurrencyType[];
+  error?: string;
 }
 
 interface ComponentProps {
@@ -41,7 +49,22 @@ interface ComponentProps {
 }
 
 export default function CurrencySettings({ loaderData }: ComponentProps) {
-  const { currencies } = loaderData;
+  const { currencies, error } = loaderData;
+
+  if (error) {
+    return (
+      <AuthGuard>
+        <div className="container mx-auto p-4 sm:p-6">
+          <ErrorDisplay 
+            error={error}
+            title="Failed to Load Currency Settings"
+            description="There was an issue loading your currency configuration."
+            onRetry={() => window.location.reload()}
+          />
+        </div>
+      </AuthGuard>
+    );
+  }
   const [defaultCurrencyId, setDefaultCurrencyId] = useState<number>(
     currencies.find((c: CurrencyType) => c.isDefault)?.id || currencies[0]?.id || 1
   );
@@ -122,7 +145,8 @@ export default function CurrencySettings({ loaderData }: ComponentProps) {
   const otherCurrencies = currencies.filter((c: CurrencyType) => c.id !== defaultCurrencyId);
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <AuthGuard>
+      <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="space-y-1 sm:space-y-2">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Currency Settings</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
@@ -256,6 +280,7 @@ export default function CurrencySettings({ loaderData }: ComponentProps) {
       </div>
 
       <Toaster />
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

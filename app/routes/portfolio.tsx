@@ -22,20 +22,47 @@ import {
   ToggleGroupItem,
 } from "~/components/ui/toggle-group";
 import type { TransactionType } from "~/datatypes/transaction";
+import { AuthGuard } from "~/components/AuthGuard";
+import { ErrorDisplay, EmptyState } from "~/components/ErrorBoundary";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const transactions = await fetchAllTransactions();
-  return { transactions };
+  try {
+    const transactions = await fetchAllTransactions();
+    return { transactions };
+  } catch (error) {
+    console.error("Error loading portfolio data:", error);
+    return { transactions: [], error: "Failed to load portfolio data" };
+  }
 }
 
 export default function Portfolio({ loaderData }: Route.ComponentProps) {
+  const { transactions: loaderTransactions, error } = loaderData;
   const [timeRange, setTimeRange] = useState("1Y");
   const portfolios = userPortfolios();
   const selectedPortfolio = portfolios.find((p) => p.selected);
   const { currencies } = useTransactionDialog();
+
+  if (error) {
+    return (
+      <AuthGuard>
+        <div className="@container/main flex flex-1 flex-col gap-2">
+          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            <div className="px-4 lg:px-6">
+              <ErrorDisplay 
+                error={error}
+                title="Failed to Load Portfolio Data"
+                description="There was an issue loading your portfolio information."
+                onRetry={() => window.location.reload()}
+              />
+            </div>
+          </div>
+        </div>
+      </AuthGuard>
+    );
+  }
   // TanStack Query for asset search
   const transactionQueries = useQueries({
-    queries: loaderData.transactions.map((transaction) => {
+    queries: (loaderTransactions || []).map((transaction) => {
       return {
         queryKey: ["assetFetch", transaction.asset],
         queryFn: async () => {
@@ -74,10 +101,10 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
   // Compute filtered transactions directly without useState
   const rawTransactions =
     selectedPortfolio && selectedPortfolio.id >= 0
-      ? loaderData.transactions.filter(
+      ? (loaderTransactions || []).filter(
           (t) => t.portfolioId === selectedPortfolio.id
         )
-      : loaderData.transactions || [];
+      : loaderTransactions || [];
 
   // Transform database transactions to match TransactionType interface
   const transactions: TransactionType[] = rawTransactions.map(t => {
@@ -254,7 +281,8 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <div className="@container/main flex flex-1 flex-col gap-2">
+    <AuthGuard>
+      <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         {/* Time Range Toggle Controls */}
         <div className="px-4 lg:px-6">
@@ -375,6 +403,7 @@ export default function Portfolio({ loaderData }: Route.ComponentProps) {
         )} */}
         {/* <DataTable data={data} /> */}
       </div>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
