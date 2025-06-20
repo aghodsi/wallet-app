@@ -13,11 +13,11 @@ import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
 import { useAuth } from "~/contexts/authContext";
 import { toast } from "sonner";
-import { 
-  sanitizeUsername, 
-  validateUsername, 
-  validatePassword, 
-  validatePasswordConfirmation 
+import {
+  sanitizeUsername,
+  validateUsername,
+  validatePassword,
+  validatePasswordConfirmation
 } from "~/lib/validation";
 
 interface SignInDialogProps {
@@ -65,7 +65,7 @@ export function SignInDialog({ children }: SignInDialogProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -74,30 +74,67 @@ export function SignInDialog({ children }: SignInDialogProps) {
 
     try {
       const sanitizedUsername = sanitizeUsername(formData.username);
-      
+
       if (isSignUp) {
         // For sign up, we'll use username as both username and email (with a dummy domain)
-        await authClient.signUp.email({
+       const { error } = await authClient.signUp.email({
           email: `${sanitizedUsername}@wallet.app`,
           password: formData.password,
+          username: sanitizedUsername,
           name: sanitizedUsername,
+        }, {
+          onRequest: (ctx) => {
+            console.log("Sign up request initiated:", ctx);
+
+          },
+          onSuccess: (ctx) => {
+            console.log("Sign up successful:", ctx);
+            toast.success("Account created successfully! Please sign in.");
+          }, onError: (ctx) => {
+            console.error("Sign up error:", ctx);
+            if(ctx.error?.code.includes("USERNAME_IS_ALREADY_TAKEN_PLEASE_TRY_ANOTHER")) {
+              setErrors(prev => ({
+                ...prev,
+                username: "Username already exists. Please choose a different one.",
+              }));
+            }
+            toast.error("Failed to create account. Please try again.");
+          }
         });
-        toast.success("Account created successfully! Please sign in.");
-        
+
+        if(error && error.code && error.code.includes("USERNAME_IS_ALREADY_TAKEN_PLEASE_TRY_ANOTHER")) {
+          setErrors(prev => ({
+            ...prev,
+            username: "Username already exists. Please choose a different one.",
+          }));
+          return;
+        }
         // Switch to login form after successful signup
         setIsSignUp(false);
-        setFormData({ username: formData.username, password: "", confirmPassword: "" });
+        setFormData({ username: "", password: "", confirmPassword: "" });
         setErrors({});
       } else {
-        await authClient.signIn.email({
-          email: `${sanitizedUsername}@wallet.app`,
+        await authClient.signIn.username({
+          username: `${sanitizedUsername}`,
           password: formData.password,
+        },{
+          onRequest: (ctx) => {
+            console.log("Sign up request initiated:", ctx);
+
+          },
+          onSuccess: (ctx) => {
+            console.log("Sign in successful:", ctx);
+            toast.success("Signed in successfully!");
+          }, onError: (ctx) => {
+            console.error("Sign up error:", ctx);
+            toast.error("Signin failed. Please check your credentials.");
+          }
         });
-        toast.success("Signed in successfully!");
         
+
         // Refresh auth state after successful authentication
         await refreshAuth();
-        
+
         setIsOpen(false);
         setFormData({ username: "", password: "", confirmPassword: "" });
         setErrors({});
@@ -116,7 +153,7 @@ export function SignInDialog({ children }: SignInDialogProps) {
       ...prev,
       [name]: value,
     }));
-    
+
     // Clear errors when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -135,7 +172,7 @@ export function SignInDialog({ children }: SignInDialogProps) {
         <DialogHeader>
           <DialogTitle>{isSignUp ? "Create Account" : "Sign In"}</DialogTitle>
           <DialogDescription>
-            {isSignUp 
+            {isSignUp
               ? "Create a new account to get started"
               : "Sign in to your account to continue"
             }

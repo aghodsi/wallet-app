@@ -110,6 +110,7 @@ export const userTable = mysqlTable('user', {
   email: varchar({ length: 255 }).notNull().unique().default('user@wallet.app'),
   emailVerified: boolean('email_verified').notNull().default(false),
   username: varchar({ length: 50 }).notNull().unique().default('anonymous_user'),
+  displayUsername: varchar({ length: 255 }).notNull().default('Anonymous'),
   image: varchar({ length: 255 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),

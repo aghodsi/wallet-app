@@ -70,6 +70,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession({ headers: request.headers });
   const userId = session?.user?.id;
 
+  console.log("User ID from session:", userId);
+
+
   // Fetch portfolios for the current user (or all if no user)
   const pf_from_db = await queryClient.fetchQuery({
     queryKey: ["portfolios", userId], 

@@ -25,6 +25,7 @@ type CreateTransactionResult = {
 };
 
 export async function fetchPortfolios(userId?: string) {
+  console.log("Fetching portfolios for user:", userId);
   if (userId) {
     return db.select().from(portfolioTable).where(eq(portfolioTable.userId, userId));
   }
