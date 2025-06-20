@@ -24,12 +24,28 @@ type CreateTransactionResult = {
   housekeepingTransaction?: { id: number };
 };
 
-export async function fetchPortfolios(userId?: string) {
+export async function fetchPortfolios(userId: string) {
   console.log("Fetching portfolios for user:", userId);
   if (userId) {
-    return db.select().from(portfolioTable).where(eq(portfolioTable.userId, userId));
+    // Fetch portfolios with their institutions and currencies in a single query
+    const portfoliosWithRelations = await db
+      .select({
+        portfolio: portfolioTable,
+        institution: institutionTable,
+        currency: currencyTable,
+      })
+      .from(portfolioTable)
+      .leftJoin(institutionTable, eq(portfolioTable.institutionId, institutionTable.id))
+      .leftJoin(currencyTable, eq(portfolioTable.currency, currencyTable.id))
+      .where(eq(portfolioTable.userId, userId));
+
+    return portfoliosWithRelations;
   }
-  return db.select().from(portfolioTable);
+  else if (userId === undefined || userId === null || userId === "" || userId === "null" || userId === "undefined" ) {
+    // If userId is not provided, return all portfolios
+    console.log("No userId provided");
+    throw new Error("User ID is required to fetch portfolios");
+  }
 }
 
 export async function fetchPortfolioById(portfolioId: number, userId?: string) {

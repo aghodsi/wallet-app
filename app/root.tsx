@@ -14,10 +14,6 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import type { Route } from "./+types/root";
 import "./app.css";
 import {
-  fetchCurrenciesByIds,
-  fetchDefaultCurrency,
-  fetchInstitutionByIds,
-  fetchPortfolios,
   fetchCurrencies,
   fetchInstitutions,
 } from "./db/actions";
@@ -27,9 +23,9 @@ import { TransactionDialogProvider } from "./contexts/transactionDialogContext";
 import { CurrencyDisplayProvider } from "./contexts/currencyDisplayContext";
 import { TimezoneProvider } from "./contexts/timezoneContext";
 import { AuthProvider } from "./contexts/authContext";
-import type { PortfolioType } from "./datatypes/portfolio";
 import { cronService } from "./services/cronService";
 import { ThemeProvider } from "./components/theme-provider";
+import { StoreInitializer } from "./components/storeInitializer";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -72,111 +68,23 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   console.log("User ID from session:", userId);
 
-
-  // Fetch portfolios for the current user (or all if no user)
-  const pf_from_db = await queryClient.fetchQuery({
-    queryKey: ["portfolios", userId], 
-    queryFn: () => fetchPortfolios(userId),
-  });
-  const currencyIds = pf_from_db.map((pf) => pf.currency);
-  const institutionIds = pf_from_db.map((pf) => pf.institutionId);
-  const currencies = await queryClient.fetchQuery({
-    queryKey: ["currencies", currencyIds],  
-    queryFn: () => fetchCurrenciesByIds(currencyIds),
-  });
-  const institutions = await queryClient.fetchQuery({
-    queryKey: ["institutions", institutionIds],
-    queryFn: () => fetchInstitutionByIds(institutionIds),
-  });
-
-  // Fetch all currencies for transaction creation
+  // Only fetch essential data that's needed regardless of auth state
+  // Portfolios will be fetched by PortfolioContext when user is authenticated
+  
+  // Fetch all currencies for transaction creation (needed for dialogs)
   const allCurrencies = await queryClient.fetchQuery({
     queryKey: ["allCurrencies"],
     queryFn: fetchCurrencies,
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
 
-  // Fetch all institutions for portfolio creation
+  // Fetch all institutions for portfolio creation (needed for dialogs)
   const allInstitutions = await queryClient.fetchQuery({
     queryKey: ["allInstitutions"],
     queryFn: fetchInstitutions,
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
 
-  const portFoliosMapped = pf_from_db.map(
-    (pf) =>
-      ({
-        id: pf.id,
-        name: pf.name,
-        currency: currencies.find((c) => c.id === pf.currency) ?? {
-          id: 1,
-          code: "USD",
-          name: "US Dollar",
-          symbol: "$",
-          exchangeRate: 1,
-          lastUpdated: "0",
-        },
-        symbol: pf.symbol ?? undefined,
-        type: pf.type ?? "Investment",
-          institution: institutions.find((i) => i.id === pf.institutionId) ?? {
-            id: 1,
-            name: "Default Institution",
-            isDefault: true,
-            website: "",
-            apiKey: "",
-            apiSecret: "",
-            apiUrl: "",
-            lastUpdated: "0",
-            isNew: false,
-          },
-        selected: false,
-      } as PortfolioType)
-  );
-
-  if (portFoliosMapped && portFoliosMapped.length > 1) {
-    const defaultCurrencyRow = await fetchDefaultCurrency();
-    const defaultCurrency = defaultCurrencyRow.map((c) => ({
-      id: c.id,
-      code: c.code,
-      name: c.name,
-      symbol: c.symbol,
-      exchangeRate: c.exchangeRate ?? 1,
-      lastUpdated: c.lastUpdated,
-      isDefault: c.isDefault === 1,
-      isNew: false,
-    }));
-
-    portFoliosMapped.push({
-      id: -1, // Use a negative ID to indicate this is a special "All" portfolio
-      name: "All",
-      currency: defaultCurrency[0] ?? {
-        id: -1,
-        code: "USD",
-        name: "US Dollar",
-        symbol: "$",
-        exchangeRate: -1,
-        lastUpdated: "0",
-      },
-      symbol: "GalleryVerticalEnd",
-      type: "Investment",
-      institution: {
-        id: -1,
-        name: "All Institutions",
-        isDefault: true,
-        website: "",
-        apiKey: "",
-        apiSecret: "",
-        apiUrl: "",
-        lastUpdated: "0",
-        isNew: false,
-      },
-      cashBalance: 0,
-      selected: false, // Default to false, let state management handle selection
-      createdAt: "0",
-    });
-  }
-
-  // Portfolio selection is now handled in the PortfolioProvider context
   // Transform allCurrencies to match CurrencyType interface
   const transformedCurrencies = allCurrencies.map(currency => ({
     ...currency,
@@ -204,11 +112,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     // Don't throw error to prevent app from breaking if cron service fails
   }
 
-  return { portFoliosMapped, allCurrencies: transformedCurrencies, allInstitutions: transformedInstitutions };
+  return { allCurrencies: transformedCurrencies, allInstitutions: transformedInstitutions };
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const portfolios = loaderData.portFoliosMapped;
   const currencies = loaderData.allCurrencies;
   const institutions = loaderData.allInstitutions;
   return (
@@ -217,7 +124,8 @@ export default function App({ loaderData }: Route.ComponentProps) {
         <ThemeProvider defaultTheme="system" storageKey="wallet-ui-theme">
           <AuthProvider>
             <div data-auth-state="authenticated" style={{ display: 'none' }}></div>
-            <PortfolioProvider initialPortfolios={portfolios}>
+            <StoreInitializer />
+            <PortfolioProvider>
               <CurrencyDisplayProvider>
                 <TimezoneProvider>
                   <TransactionDialogProvider currencies={currencies} institutions={institutions}>

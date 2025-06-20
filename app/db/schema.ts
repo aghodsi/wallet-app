@@ -1,4 +1,3 @@
-import { create } from 'domain';
 import { int, double, mysqlTable, varchar, json, timestamp, boolean } from 'drizzle-orm/mysql-core';
 
 

@@ -30,9 +30,13 @@ export function meta({ }: Route.MetaArgs) {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  const { auth } = await import("~/lib/auth");
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userId = session?.user?.id;
+
   const institutions = await fetchInstitutions();
   const currencies = await fetchCurrencies();
-  const transactions = await fetchAllTransactions();
+  const transactions = await fetchAllTransactions(userId);
 
   const institutionsWithType = institutions.map((i) => ({
     id: i.id,

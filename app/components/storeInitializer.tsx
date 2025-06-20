@@ -1,37 +1,62 @@
-import { useEffect } from 'react'
-import { usePortfolioStore } from '~/stores/portfolioStore'
-import type { PortfolioType } from '~/datatypes/portfolio'
-import type { CurrencyType } from '~/datatypes/currency'
-import type { InstitutionType } from '~/datatypes/institution'
+import { useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router';
+import { useAuth } from '~/contexts/authContext';
 
-interface StoreInitializerProps {
-  portfolios: PortfolioType[]
-  currencies: CurrencyType[]
-  institutions: InstitutionType[]
-  children: React.ReactNode
-}
-
-export function StoreInitializer({ 
-  portfolios, 
-  currencies, 
-  institutions, 
-  children 
-}: StoreInitializerProps) {
-  const { setPortfolios, setAllCurrencies, setAllInstitutions } = usePortfolioStore()
+export function StoreInitializer() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { user, isLoading, session } = useAuth();
+  
+  // Keep track of previous user to detect changes
+  const prevUserRef = useRef<typeof user>(user);
+  const prevSessionRef = useRef<typeof session>(session);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    console.log('StoreInitializer: Initializing store with data:')
-    console.log('- Portfolios:', portfolios.length, portfolios)
-    console.log('- Currencies:', currencies.length, currencies)
-    console.log('- Institutions:', institutions.length, institutions)
-    
-    // Initialize store with data from loader
-    setPortfolios(portfolios)
-    setAllCurrencies(currencies)
-    setAllInstitutions(institutions)
-    
-    console.log('StoreInitializer: Store initialized')
-  }, [portfolios, currencies, institutions, setPortfolios, setAllCurrencies, setAllInstitutions])
+    // Skip the first render to avoid clearing data on initial load
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      prevUserRef.current = user;
+      prevSessionRef.current = session;
+      return;
+    }
 
-  return <>{children}</>
+    // Don't react while auth is still loading
+    if (isLoading) return;
+
+    const prevUser = prevUserRef.current;
+    const prevSession = prevSessionRef.current;
+
+    // User signed out (had user/session, now doesn't)
+    if ((prevUser || prevSession) && !user && !session) {
+      console.log('🔄 StoreInitializer: User signed out, clearing data');
+      queryClient.clear();
+      navigate('/', { replace: true });
+    }
+    
+    // User signed in (didn't have user, now does)
+    else if (!prevUser && user) {
+      console.log('🔄 StoreInitializer: User signed in:', user.id);
+      // Invalidate queries to force refetch with new user
+      queryClient.invalidateQueries({ queryKey: ['portfolios'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['currencies'] });
+      queryClient.invalidateQueries({ queryKey: ['institutions'] });
+    }
+    
+    // User changed (different user ID)
+    else if (prevUser && user && prevUser.id !== user.id) {
+      console.log('🔄 StoreInitializer: User changed from', prevUser.id, 'to', user.id);
+      queryClient.clear(); // Clear old user's data
+      // Force reload to get fresh data for new user
+      window.location.reload();
+    }
+
+    // Update refs for next comparison
+    prevUserRef.current = user;
+    prevSessionRef.current = session;
+  }, [user, session, isLoading, queryClient, navigate]);
+
+  return null;
 }

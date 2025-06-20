@@ -9,18 +9,21 @@ import { useQueries } from "@tanstack/react-query"
 import { AssetDetailSheet } from "~/components/assetDetailSheet"
 import { useTransactionDialog } from "~/contexts/transactionDialogContext"
 import { useCurrencyDisplay } from "~/contexts/currencyDisplayContext"
-import { convertCurrency, getDefaultCurrency } from "~/lib/currencyUtils"
-import type { Route } from "/types/+assets"
+import { convertCurrency } from "~/lib/currencyUtils"
+import type { Route } from "./+types/assets"
 import { AuthGuard } from "~/components/AuthGuard"
+import { withAuth } from "~/lib/auth-middleware"
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  try {
-    const allTransactions = await fetchAllTransactions()
-    return { transactions: allTransactions }
-  } catch (error) {
-    console.error("Error loading transactions:", error)
-    return { transactions: [], error: "Failed to load transactions" }
-  }
+  return withAuth(request, async (authData) => {
+    try {
+      const allTransactions = await fetchAllTransactions(authData.user.id)
+      return { transactions: allTransactions }
+    } catch (error) {
+      console.error("Error loading transactions:", error)
+      return { transactions: [], error: "Failed to load transactions" }
+    }
+  });
 }
 
 export default function Assets({ loaderData }: { loaderData: { transactions: any[], error?: string } }) {

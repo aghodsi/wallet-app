@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import type { ReactNode } from "react";
 import { authClient } from "~/lib/auth-client";
 import type { User, Session } from "~/lib/auth-client";
@@ -20,12 +20,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const isMountedRef = useRef(true);
 
-  const refreshAuth = async () => {
+  const refreshAuth = useCallback(async () => {
     try {
       console.log("🔄 Refreshing auth state...");
       const sessionData = await authClient.getSession();
       console.log("📦 Session data received:", sessionData);
+      
+      // Prevent state updates if component is unmounted
+      if (!isMountedRef.current) return;
       
       if (sessionData.data) {
         console.log("✅ User authenticated:", sessionData.data.user);
@@ -43,18 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("❌ Auth check failed:", error);
+      if (!isMountedRef.current) return;
       setSession(null);
       setUser(null);
       setJustLoggedIn(false);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [user, isLoading]);
 
   useEffect(() => {
     refreshAuth();
 
-    // Listen for auth refresh events (triggered by 401 responses)
+    // Create a ref to the refresh function for event handler
     const handleAuthRefresh = () => {
       console.log("🔄 Auth refresh requested by API client");
       refreshAuth();
@@ -63,24 +70,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener('auth-refresh-needed', handleAuthRefresh);
     
     return () => {
+      isMountedRef.current = false;
       window.removeEventListener('auth-refresh-needed', handleAuthRefresh);
     };
-  }, []);
+  }, [refreshAuth]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await authClient.signOut();
+      if (!isMountedRef.current) return;
       setUser(null);
       setSession(null);
       setJustLoggedIn(false);
     } catch (error) {
       console.error("Sign out failed:", error);
     }
-  };
+  }, []);
 
-  const clearJustLoggedIn = () => {
+  const clearJustLoggedIn = useCallback(() => {
     setJustLoggedIn(false);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, session, isLoading, justLoggedIn, signOut, refreshAuth, clearJustLoggedIn }}>

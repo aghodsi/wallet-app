@@ -7,8 +7,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return withAuth(request, async (authData) => {
     const transactionId = params.id ? parseInt(params.id) : -1
     if (transactionId === -1) {
-      // If no transaction ID is provided, fetch all transactions
-      return await fetchAllTransactions()
+      // If no transaction ID is provided, fetch all transactions for the authenticated user
+      return await fetchAllTransactions(authData.user.id)
     } else {
       // If a transaction ID is provided, fetch that specific transaction
       const transaction = await fetchTransactionById(transactionId)
