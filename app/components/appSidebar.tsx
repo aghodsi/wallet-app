@@ -12,7 +12,9 @@ import {
   Settings,
   Settings2,
   TrendingUp,
+  TrendingUpDown,
   Wallet,
+  WalletCards,
 } from "lucide-react"
 
 import { NavComponent } from "~/components/navComponent"
@@ -38,6 +40,14 @@ const data = {
     email: "me@example.com",
     avatar: "/snitch.svg",
   },
+  home: [
+    {
+      name: "Home",
+      url: "/",
+      icon: Home,
+      needsPortfolio: false,
+    },
+  ],
   actions: [
     {
       name: "Create Portfolio",
@@ -53,12 +63,7 @@ const data = {
     },
   ],
   navItems: [
-    {
-      name: "Home",
-      url: "/",
-      icon: Home,
-      needsPortfolio: false,
-    },
+
     {
       name: "Portfolio Overview",
       url: "/portfolio",
@@ -113,29 +118,6 @@ const data = {
     }
 
   ],
-  // settingsNavItems: [{
-  //   title: "Settings",
-  //   url: "#",
-  //   icon: Settings2,
-  //   items: [
-  //     {
-  //       name: "Portfolio Settings",
-  //       url: "#",
-  //       needsPortfolio: true,
-  //     },
-  //     {
-  //       name: "Currency Settings",
-  //       url: "#",
-  //       needsPortfolio: false,
-  //     },
-  //     {
-  //       name: "Recurring",
-  //       url: "/recurring-transactions",
-  //       icon: Clock,
-  //       needsPortfolio: true,
-  //     }
-  //   ],
-  // }]
 }
 
 
@@ -143,9 +125,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const portfolios = userPortfolios();
   const { openTransactionDialog, openPortfolioDialog } = useDialogContext();
   const { user } = useAuth();
-  const [actions, setActions] = React.useState(data.actions);
-  const [navItems, setNavItems] = React.useState(data.navItems);
-  const [settingsNavItems, setSettingsNavItems] = React.useState(data.settingsNavItems);
 
   // Create modified actions with dialog handlers
   const modifiedActions = React.useMemo(() => {
@@ -171,14 +150,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
-        <PortfolioSwitcher portfolios={portfolios} />
+        <div className="flex items-center gap-2 px-2 py-1">
+          <TrendingUpDown className="h-6 w-6 text-primary" />
+          <span className="font-semibold text-lg">Wallet Manager</span>
+        </div>
+        {user && <PortfolioSwitcher portfolios={portfolios} />}
       </SidebarHeader>
       <SidebarContent>
-        <NavComponent items={modifiedActions} title={"Actions"} />
-        <NavComponent items={data.navItems} title={"Main"} />
-        <NavComponent items={data.settingsNavItems} title={"Configuration"} />
+        <NavComponent items={data.home} title={""} />
+        {user && <NavComponent items={modifiedActions} title={"Actions"} />}
+        {user && <NavComponent items={data.navItems} title={"Portfolio Activity"} />}
+        {user && <NavComponent items={data.settingsNavItems} title={"Configuration"} />}
         {/* <NavComponentCollapsable items={data.settingsNavItems} title={"Configuration"} /> */}
       </SidebarContent>
       <SidebarFooter>

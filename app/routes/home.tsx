@@ -373,7 +373,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       });
   })();
 
-  if (portfolios.length === 0) {
+  if (portfolios.length === 0 || !user) {
     // No portfolios - show invitation to create one
     return (
       <div className="min-h-screen bg-background">

@@ -25,10 +25,12 @@ import {
 import { useAuth } from "~/contexts/authContext"
 import { getAvatarSeed, getAvatarInitials } from "~/lib/avatar"
 import BoringAvatar from "boring-avatars"
+import { useNavigate } from "react-router"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, signOut } = useAuth()
+  let navigate = useNavigate();
 
   if (!user) return null
 
@@ -37,6 +39,7 @@ export function NavUser() {
 
   const handleSignOut = async () => {
     await signOut()
+    navigate("/")
   }
 
   const renderAvatar = () => (
