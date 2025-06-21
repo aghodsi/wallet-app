@@ -6,6 +6,7 @@ import {
   transactionTable,
   cronRuns,
   userTable,
+  userCurrencyRateTable,
 } from "./schema";
 import { eq, inArray, desc, ne, and } from "drizzle-orm";
 import type { InstitutionType } from "~/datatypes/institution";
@@ -42,7 +43,7 @@ export async function fetchPortfolios(userId: string) {
 
     return portfoliosWithRelations;
   }
-  else if (userId === undefined || userId === null || userId === "" || userId === "null" || userId === "undefined" ) {
+  else if (userId === undefined || userId === null || userId === "" || userId === "null" || userId === "undefined") {
     // If userId is not provided, return all portfolios
     console.log("No userId provided");
     throw new Error("User ID is required to fetch portfolios");
@@ -54,7 +55,7 @@ export async function fetchPortfolioById(portfolioId: number, userId?: string) {
   if (userId) {
     conditions.push(eq(portfolioTable.userId, userId));
   }
-  
+
   return db
     .select()
     .from(portfolioTable)
@@ -85,6 +86,13 @@ export async function fetchCurrencies() {
   return db.select().from(currencyTable);
 }
 
+export async function fetchUserCurrenyRates(userId: string) {
+  return db
+    .select()
+    .from(userCurrencyRateTable)
+    .where(eq(userCurrencyRateTable.userId, userId));
+}
+
 export async function createDefaultCurrencies() {
   const defaultCurrencies = [
     { code: 'USD', name: 'United States Dollar', symbol: '$', exchangeRate: 1.18, isDefault: 0 },
@@ -99,7 +107,7 @@ export async function createDefaultCurrencies() {
     { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$', exchangeRate: 1.67, isDefault: 0 }
   ];
 
-  const insertPromises = defaultCurrencies.map(currency => 
+  const insertPromises = defaultCurrencies.map(currency =>
     db.insert(currencyTable).values({
       code: currency.code,
       name: currency.name,
@@ -112,7 +120,7 @@ export async function createDefaultCurrencies() {
 
   await Promise.all(insertPromises);
   console.log('Default currencies inserted successfully');
-  
+
   // Return the inserted currencies
   return db.select().from(currencyTable);
 }
@@ -170,8 +178,7 @@ export async function updateCurrency(currencyId: number, updates: {
   } catch (error) {
     console.error("Error updating currency:", error);
     throw new Error(
-      `Failed to update currency: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to update currency: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -180,25 +187,28 @@ export async function updateCurrency(currencyId: number, updates: {
 export async function updateCurrencyExchangeRates(exchangeRates: Array<{
   currencyId: number;
   exchangeRate: number;
-}>) {
+}>, userId: string) {
   try {
     return await db.transaction(async (tx) => {
       for (const { currencyId, exchangeRate } of exchangeRates) {
-        await tx
-          .update(currencyTable)
-          .set({ 
-            exchangeRate,
-            lastUpdated: new Date().getTime().toString()
-          })
-          .where(eq(currencyTable.id, currencyId));
+        await tx.insert(userCurrencyRateTable).values({
+          userId: userId,
+          currencyId: currencyId,
+          exchangeRate: exchangeRate,
+          lastUpdated: new Date().getTime().toString(),
+        }).onDuplicateKeyUpdate({
+          set: {
+            exchangeRate: exchangeRate,
+            lastUpdated: new Date().getTime().toString(),
+          }
+        });
       }
       return { success: true };
     });
   } catch (error) {
     console.error("Error updating currency exchange rates:", error);
     throw new Error(
-      `Failed to update currency exchange rates: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to update currency exchange rates: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -280,8 +290,7 @@ export async function createPortfolio(portfolio: PortfolioType, userId: string) 
   } catch (error) {
     console.error("Error creating portfolio:", error);
     throw new Error(
-      `Failed to create portfolio: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to create portfolio: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -301,7 +310,7 @@ export async function updatePortfolio(portfolioId: number, portfolio: Partial<Po
       }
 
       const updateData: any = {};
-      
+
       if (portfolio.name !== undefined) updateData.name = portfolio.name;
       if (portfolio.currency !== undefined) updateData.currency = portfolio.currency.id;
       if (portfolio.symbol !== undefined) updateData.symbol = portfolio.symbol;
@@ -319,8 +328,7 @@ export async function updatePortfolio(portfolioId: number, portfolio: Partial<Po
   } catch (error) {
     console.error("Error updating portfolio:", error);
     throw new Error(
-      `Failed to update portfolio: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to update portfolio: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -343,8 +351,7 @@ export async function createInstitution(institution: InstitutionType) {
   } catch (error) {
     console.error("Error creating institution:", error);
     throw new Error(
-      `Failed to create institution: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to create institution: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -362,7 +369,7 @@ export async function getMostRecentAssetBySymbol(symbol: string) {
 export async function getAllAssetBySymbolOrderedDesc(symbol: string) {
   return db
     .select()
-    .from(assetTable) 
+    .from(assetTable)
     .where(eq(assetTable.symbol, symbol))
     .orderBy(desc(assetTable.lastUpdated));
 }
@@ -515,8 +522,7 @@ export async function createTransaction(
   } catch (error) {
     console.error("Error creating transaction:", error);
     throw new Error(
-      `Failed to create transaction: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to create transaction: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -530,7 +536,7 @@ export async function updateTransaction(
     console.log("Updating transaction:", transactionId, transaction);
 
     const updateData: any = {};
-    
+
     if (transaction.portfolioId !== undefined) updateData.portfolioId = transaction.portfolioId;
     if (transaction.date !== undefined) updateData.date = transaction.date;
     if (transaction.type !== undefined) updateData.type = transaction.type;
@@ -552,8 +558,7 @@ export async function updateTransaction(
   } catch (error) {
     console.error("Error updating transaction:", error);
     throw new Error(
-      `Failed to update transaction: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to update transaction: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -571,8 +576,7 @@ export async function deleteTransaction(transactionId: number): Promise<void> {
   } catch (error) {
     console.error("Error deleting transaction:", error);
     throw new Error(
-      `Failed to delete transaction: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to delete transaction: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -581,7 +585,7 @@ export async function deleteTransaction(transactionId: number): Promise<void> {
 export async function fetchRecurringTransactions(portfolioId?: number) {
   try {
     const conditions = [ne(transactionTable.recurrence, "")];
-    
+
     if (portfolioId && portfolioId !== -1) {
       conditions.push(eq(transactionTable.portfolioId, portfolioId));
     }
@@ -607,8 +611,7 @@ export async function fetchRecurringTransactions(portfolioId?: number) {
   } catch (error) {
     console.error("Error fetching recurring transactions:", error);
     throw new Error(
-      `Failed to fetch recurring transactions: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to fetch recurring transactions: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -624,8 +627,7 @@ export async function fetchCronRunsForTransaction(transactionId: number) {
   } catch (error) {
     console.error("Error fetching cron runs:", error);
     throw new Error(
-      `Failed to fetch cron runs: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to fetch cron runs: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -658,8 +660,7 @@ export async function createRecurringTransaction(transactionId: number) {
   } catch (error) {
     console.error("Error creating recurring transaction:", error);
     throw new Error(
-      `Failed to create recurring transaction: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to create recurring transaction: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -692,8 +693,7 @@ export async function duplicateTransaction(transactionId: number): Promise<{ id:
   } catch (error) {
     console.error("Error duplicating transaction:", error);
     throw new Error(
-      `Failed to duplicate transaction: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to duplicate transaction: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -709,8 +709,7 @@ export async function fetchTransactionsByRecurrenceOf(transactionId: number) {
   } catch (error) {
     console.error("Error fetching transactions by recurrenceOf:", error);
     throw new Error(
-      `Failed to fetch transactions by recurrenceOf: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to fetch transactions by recurrenceOf: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -726,8 +725,7 @@ export async function fetchTransactionsByDuplicateOf(transactionId: number) {
   } catch (error) {
     console.error("Error fetching transactions by duplicateOf:", error);
     throw new Error(
-      `Failed to fetch transactions by duplicateOf: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to fetch transactions by duplicateOf: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -749,8 +747,7 @@ export async function logCronRun(
   } catch (error) {
     console.error("Error logging cron run:", error);
     throw new Error(
-      `Failed to log cron run: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to log cron run: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -759,10 +756,10 @@ export async function logCronRun(
 export async function updateUserDefaultCurrency(userId: string, currencyId: number) {
   try {
     console.log("Updating user default currency:", userId, currencyId);
-    
+
     await db
       .update(userTable)
-      .set({ 
+      .set({
         defaultCurrency: currencyId,
         updatedAt: new Date()
       })
@@ -772,8 +769,7 @@ export async function updateUserDefaultCurrency(userId: string, currencyId: numb
   } catch (error) {
     console.error("Error updating user default currency:", error);
     throw new Error(
-      `Failed to update user default currency: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Failed to update user default currency: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
