@@ -18,4 +18,5 @@ export default [
     route("/api/import", "routes/api.import.tsx"),
     route("/api/auth/*", "routes/api.auth.$.tsx"),
     route("/api/portfolios", "routes/api.portfolios.tsx"),
+    route("/export", "routes/api.export.tsx"),
 ] satisfies RouteConfig;

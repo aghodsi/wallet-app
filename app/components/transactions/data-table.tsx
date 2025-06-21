@@ -179,6 +179,36 @@ export function TransactionsDataTable<TData, TValue>({
     downloadCSV(csvContent, filename)
   }, [table, portfolios, selectedPortfolioId, showOriginalCurrency])
 
+  // Handle JSON export
+  const handleExportJSON = React.useCallback(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const hasSelectedRows = selectedRows.length > 0
+
+    // Get transactions to export (selected or all filtered)
+    const transactionsToExport = hasSelectedRows
+      ? selectedRows.map(row => row.original as TransactionType)
+      : table.getFilteredRowModel().rows.map(row => row.original as TransactionType)
+
+    // Generate filename with timestamp and selection info
+    const timestamp = new Date().toISOString().split('T')[0]
+    const selectionInfo = hasSelectedRows ? `selected_${selectedRows.length}` : 'all'
+    const filename = `transactions_${selectionInfo}_${timestamp}.json`
+
+    // Stringify with indentation for readability
+    const jsonContent = JSON.stringify(transactionsToExport, null, 2)
+
+    // Create a blob and trigger download
+    const blob = new Blob([jsonContent], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [table])
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4 gap-4 flex-wrap">
@@ -246,6 +276,27 @@ export function TransactionsDataTable<TData, TValue>({
                   {table.getFilteredSelectedRowModel().rows.length > 0
                     ? `Export ${table.getFilteredSelectedRowModel().rows.length} selected transactions`
                     : `Export all ${table.getFilteredRowModel().rows.length} transactions`
+                  }
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportJSON}
+                  disabled={table.getFilteredRowModel().rows.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export JSON
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {table.getFilteredSelectedRowModel().rows.length > 0
+                    ? `Export ${table.getFilteredSelectedRowModel().rows.length} selected transactions as JSON`
+                    : `Export all ${table.getFilteredRowModel().rows.length} transactions as JSON`
                   }
                 </p>
               </TooltipContent>

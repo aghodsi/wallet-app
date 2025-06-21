@@ -107,7 +107,7 @@ const data = {
     },
     {
       name: "Recurring Transactions",
-      url: "/recurringT ransactions",
+      url: "/recurringTransactions",
       icon: Clock,
       needsPortfolio: true,
     },
